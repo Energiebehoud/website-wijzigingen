@@ -256,7 +256,13 @@
     var l1 = el('label', null, 'Huidige tekst');
     l1.appendChild(invoer(w, 'huidig', 'huidig', 'Wat er nu staat (leeg laten bij nieuwe tekst)', 3)); k.appendChild(l1);
     var l2 = el('label', null, 'Nieuwe tekst');
-    l2.appendChild(invoer(w, 'nieuw', 'nieuw', 'Wat er moet komen te staan (leeg laten bij verwijderen)', 3)); k.appendChild(l2);
+    var nieuwVeld = invoer(w, 'nieuw', 'nieuw', 'Wat er moet komen te staan (leeg laten bij verwijderen)', 3);
+    l2.appendChild(nieuwVeld); k.appendChild(l2);
+    var herschrijf = el('div', 'herschrijf');
+    herschrijf.appendChild(knop('Herschrijven', 'klein ai', 'Laat Claude de nieuwe tekst in correct Nederlands en de juiste vorm zetten', function (e) {
+      herschrijfTekst(staatPagina(w.id), w, nieuwVeld, herschrijf, e.currentTarget);
+    }));
+    k.appendChild(herschrijf);
     var l3 = el('details', 'toel-blok');
     if (w.toelichting) l3.open = true;
     l3.appendChild(el('summary', null, 'Toelichting (optioneel)'));
@@ -270,6 +276,119 @@
     k.addEventListener('mouseleave', function () { markeer(w.id, false); });
     return k;
   }
+
+  function staatPagina(id) { var f = zoekWijziging(id); return f ? f.p : null; }
+
+  // ---------- tekst herschrijven met Claude (sleutel van de gebruiker, alleen in deze browser) ----------
+  var SLEUTEL = 'ww_anthropic_key';
+  var SDK_URL = 'https://cdn.jsdelivr.net/npm/@anthropic-ai/sdk@0.131.0/+esm';
+  var SYSTEEM = [
+    'Je bent eindredacteur van websiteteksten voor Energiebehoud BV en Labellift (energielabels, maatwerkadvies en verduurzaming van woningen).',
+    'Je krijgt een nieuwe tekst die op een webpagina moet komen. Herschrijf die in correct, natuurlijk Nederlands en in de juiste vorm voor die plek op de pagina.',
+    'Stijl: nuchter, vakkundig en warm. Gewone taal, korte zinnen, de lezer aanspreken met je/jij. Geen verkooppraat, geen overdreven bijvoeglijke naamwoorden, geen uitroeptekens, geen emoji, geen gedachtestreepjes.',
+    'Behoud de betekenis en alle feiten (bedragen, termijnen, namen, labels). Verzin niets bij.',
+    'Vorm: een kop wordt een korte kop zonder punt; een knoptekst wordt een korte actie (bijv. "Vraag een offerte aan"); een alinea blijft een alinea. Houd de lengte vergelijkbaar met de huidige tekst, tenzij de toelichting iets anders vraagt. Behoud regelafbrekingen en opsommingen.',
+    'Geef alleen de herschreven tekst terug, zonder aanhalingstekens, uitleg of inleiding.'
+  ].join('\n');
+
+  function leesSleutel() { try { return localStorage.getItem(SLEUTEL) || ''; } catch (e) { return ''; } }
+  function zetSleutel(v) { try { if (v) localStorage.setItem(SLEUTEL, v); else localStorage.removeItem(SLEUTEL); } catch (e) {} }
+
+  var sdkBelofte = null;
+  function claude() {
+    var sleutel = leesSleutel();
+    if (!sleutel) return Promise.reject(new Error('GEEN_SLEUTEL'));
+    if (!sdkBelofte) sdkBelofte = import(SDK_URL).catch(function (e) { sdkBelofte = null; throw e; });
+    return sdkBelofte.then(function (mod) {
+      var Anthropic = mod.default || mod.Anthropic;
+      return new Anthropic({ apiKey: sleutel, dangerouslyAllowBrowser: true });
+    });
+  }
+
+  function vraagVoor(p, w) {
+    var regels = [];
+    if (p && p.pagina) regels.push('Pagina: ' + p.pagina);
+    if (p && p.url) regels.push('Adres: ' + p.url);
+    regels.push('Soort wijziging: ' + (w.soort || 'Tekst vervangen'));
+    if (w.waar) regels.push('Plek op de pagina: ' + w.waar);
+    if (w.huidig) regels.push('Huidige tekst op de website:\n<huidig>\n' + w.huidig + '\n</huidig>');
+    if (w.toelichting) regels.push('Toelichting van de opdrachtgever:\n<toelichting>\n' + w.toelichting + '\n</toelichting>');
+    regels.push('Nieuwe tekst om te herschrijven:\n<nieuw>\n' + w.nieuw + '\n</nieuw>');
+    return regels.join('\n\n');
+  }
+
+  function herschrijfTekst(p, w, veld, bak, knopEl) {
+    if (!w.nieuw || !w.nieuw.trim()) { meld('Typ eerst een nieuwe tekst'); veld.focus(); return; }
+    knopEl.disabled = true; knopEl.textContent = 'Bezig...';
+    var oud = bak.querySelector('.voorstel'); if (oud) oud.remove();
+    claude().then(function (client) {
+      return client.beta.messages.create({
+        model: 'claude-opus-5-5',
+        max_tokens: 4000,
+        output_config: { effort: 'low' },
+        betas: ['server-side-fallback-2026-07-01'],
+        fallbacks: 'default',
+        system: SYSTEEM,
+        messages: [{ role: 'user', content: vraagVoor(p, w) }]
+      });
+    }).then(function (antwoord) {
+      if (antwoord.stop_reason === 'refusal') throw new Error('Claude wilde deze tekst niet herschrijven');
+      var tekst = antwoord.content.filter(function (b) { return b.type === 'text'; })
+        .map(function (b) { return b.text; }).join('').trim()
+        .replace(/^<nieuw>\s*|\s*<\/nieuw>$/g, '');
+      if (!tekst) throw new Error('Geen tekst ontvangen');
+      toonVoorstel(w, veld, bak, tekst);
+    }).catch(function (e) {
+      if (e && e.message === 'GEEN_SLEUTEL') { openSleutel(); meld('Vul eerst je Claude API-sleutel in'); return; }
+      var status = e && e.status;
+      if (status === 401) { meld('De API-sleutel klopt niet. Controleer hem bij AI-instellingen.'); openSleutel(); }
+      else if (status === 429) meld('Even te veel verzoeken. Probeer het over een minuut opnieuw.');
+      else if (status === 400 && /credit/i.test(e.message || '')) meld('Je API-tegoed is op. Waardeer het op in de Claude Console.');
+      else meld('Herschrijven mislukt: ' + ((e && e.message) || 'onbekende fout'));
+    }).then(function () {
+      knopEl.disabled = false; knopEl.textContent = 'Herschrijven';
+    });
+  }
+
+  function toonVoorstel(w, veld, bak, tekst) {
+    var v = el('div', 'voorstel');
+    v.appendChild(el('div', 'voorstel-kop', 'Voorstel'));
+    v.appendChild(el('div', 'voorstel-tekst', tekst));
+    var acties = el('div', 'voorstel-acties');
+    acties.appendChild(knop('Overnemen', 'klein primair', null, function () {
+      w.nieuw = tekst; veld.value = tekst; bewaar(); v.remove(); meld('Nieuwe tekst overgenomen');
+      if (!document.body.contains(veld)) render();
+    }));
+    acties.appendChild(knop('Nog een keer', 'klein', null, function (e) {
+      herschrijfTekst(staatPagina(w.id), w, veld, bak, bak.querySelector('button.ai'));
+    }));
+    acties.appendChild(knop('Niet gebruiken', 'klein', null, function () { v.remove(); }));
+    v.appendChild(acties);
+    bak.appendChild(v);
+  }
+
+  function openSleutel() {
+    $('ai-sleutel').value = leesSleutel();
+    $('ai-status').textContent = leesSleutel() ? 'Er is een sleutel opgeslagen in deze browser.' : 'Nog geen sleutel opgeslagen.';
+    if (!$('ai-instellingen').open) $('ai-instellingen').showModal();
+  }
+  $('btn-ai').addEventListener('click', openSleutel);
+  $('ai-sluit').addEventListener('click', function () { $('ai-instellingen').close(); });
+  $('ai-wis').addEventListener('click', function () { zetSleutel(''); $('ai-sleutel').value = ''; $('ai-status').textContent = 'Sleutel verwijderd.'; });
+  $('ai-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var v = $('ai-sleutel').value.trim();
+    if (!v) return;
+    zetSleutel(v);
+    $('ai-status').textContent = 'Testen...';
+    claude().then(function (client) {
+      return client.models.retrieve('claude-opus-5-5');
+    }).then(function () {
+      $('ai-status').textContent = 'Werkt. De sleutel is opgeslagen in deze browser.';
+    }).catch(function (er) {
+      $('ai-status').textContent = er && er.status === 401 ? 'Deze sleutel wordt niet geaccepteerd.' : 'Opgeslagen, maar testen lukte niet: ' + ((er && er.message) || er);
+    });
+  });
 
   function zetPositie(e, r) {
     e.style.left = r.x + '%'; e.style.top = r.y + '%'; e.style.width = r.b + '%'; e.style.height = r.h + '%';

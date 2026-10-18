@@ -87,6 +87,19 @@ textarea { resize: vertical; }
 .kaart .huidig { background: var(--oud-vlak); }
 .kaart .nieuw { background: var(--nieuw-vlak); }
 .leeg-kaarten { color: var(--zacht); font-size: 14px; margin: 0; }
+.herschrijf { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; margin-top: -2px; }
+button.ai { border-color: var(--merk); color: var(--merk-donker); font-weight: 600; }
+button.ai::before { content: "\270E  "; }
+.voorstel { align-self: stretch; border: 1px solid var(--merk); border-radius: 6px; background: #fff; padding: 8px 10px; }
+.voorstel-kop { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--merk-donker); font-weight: 600; margin-bottom: 4px; }
+.voorstel-tekst { white-space: pre-wrap; margin-bottom: 8px; }
+.voorstel-acties { display: flex; flex-wrap: wrap; gap: 6px; }
+.ai-form { padding: 4px 18px 18px; display: flex; flex-direction: column; gap: 8px; font-size: 14px; }
+.ai-form p { margin: 6px 0 0; }
+.ai-form a { color: var(--merk-donker); }
+.ai-form label { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--zacht); font-weight: 600; margin-top: 6px; }
+.ai-acties { display: flex; flex-wrap: wrap; gap: 8px; }
+
 .toel-blok summary {
   cursor: pointer; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--zacht); font-weight: 600;
   padding: 2px 0; user-select: none;

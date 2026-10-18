@@ -12,6 +12,7 @@
   <div class="merk">Wijzigingsverzoek <span>website</span></div>
   <div class="acties">
     <span id="status" class="status"></span>
+    <button id="btn-ai" type="button">AI-instellingen</button>
     <button id="btn-verzoeken" type="button">Mijn verzoeken</button>
     <button id="btn-nieuw" type="button">Nieuw</button>
     <button id="btn-open" type="button">Openen</button>
@@ -72,6 +73,24 @@
     <button id="verzoeken-sluit" type="button" class="klein">Sluiten</button>
   </div>
   <ul id="verzoeken-lijst"></ul>
+</dialog>
+
+<dialog id="ai-instellingen" class="verzoeken" aria-labelledby="ai-kop">
+  <div class="verzoeken-kop">
+    <h2 id="ai-kop">AI-instellingen</h2>
+    <button id="ai-sluit" type="button" class="klein">Sluiten</button>
+  </div>
+  <form id="ai-form" class="ai-form">
+    <p>De knop <b>Herschrijven</b> laat Claude (Anthropic) de nieuwe tekst in correct Nederlands en de juiste vorm zetten. Daarvoor is een API-sleutel nodig. Die maak je aan in de <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">Claude Console</a>; de kosten zijn een fractie van een cent per tekst.</p>
+    <p>De sleutel wordt alleen in deze browser bewaard en gaat rechtstreeks naar Anthropic, nergens anders heen. Gebruik bij voorkeur een aparte sleutel met een bestedingslimiet.</p>
+    <label for="ai-sleutel">API-sleutel</label>
+    <input id="ai-sleutel" type="password" autocomplete="off" spellcheck="false" placeholder="sk-ant-...">
+    <div class="ai-acties">
+      <button type="submit" class="primair">Opslaan en testen</button>
+      <button id="ai-wis" type="button" class="gevaar">Sleutel verwijderen</button>
+    </div>
+    <p id="ai-status" class="hint" role="status"></p>
+  </form>
 </dialog>
 
 <div id="melding" class="melding" role="status" aria-live="polite"></div>

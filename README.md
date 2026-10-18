@@ -19,6 +19,15 @@ Alle gegevens blijven in de browser (IndexedDB): elk verzoek wordt apart en auto
 Een gedownload verzoek kan via **Openen** weer worden bewerkt, ook verzoeken die de
 Claude-skill heeft gemaakt.
 
+## Herschrijven met Claude
+
+Bij elke nieuwe tekst staat een knop **Herschrijven**. Die stuurt de tekst (met pagina, plek,
+huidige tekst en toelichting als context) naar de Claude API (`claude-opus-5-5`, effort `low`)
+en toont een voorstel dat je kunt overnemen. De API-sleutel vult de gebruiker zelf in bij
+**AI-instellingen**; die staat alleen in `localStorage` van die browser en gaat rechtstreeks
+naar `api.anthropic.com` (SDK via jsDelivr, `dangerouslyAllowBrowser`). De schrijfstijl staat in
+`SYSTEEM` in `app.js`.
+
 ## Lokaal draaien
 
 Geen Node of Python nodig: start een PowerShell-webserver in deze map (zie de aanpak in
