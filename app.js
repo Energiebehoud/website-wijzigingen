@@ -16,7 +16,7 @@
   function leegStaat(vorige) {
     var m = vorige ? vorige.meta : {};
     return {
-      versie: 1,
+      versie: 1, id: uid(), gewijzigd: Date.now(),
       meta: {
         titel: 'Wijzigingsverzoek website', website: m.website || '', datum: vandaag(),
         afzender: m.afzender || '', ontvanger: m.ontvanger || '', intro: STANDAARD_INTRO
@@ -26,39 +26,93 @@
   }
 
   // ---------- opslag in de browser (IndexedDB; screenshots passen niet in localStorage) ----------
+  // Elk verzoek wordt apart bewaard in 'verzoeken' (sleutel = id); 'staat' onthoudt welk verzoek open was.
   var dbBelofte = null;
   function db() {
     if (!dbBelofte) {
       dbBelofte = new Promise(function (res, rej) {
-        var r = indexedDB.open('wijzigingsverzoek', 1);
-        r.onupgradeneeded = function () { r.result.createObjectStore('staat'); };
+        var r = indexedDB.open('wijzigingsverzoek', 2);
+        r.onupgradeneeded = function () {
+          var d = r.result, tx = r.transaction;
+          if (!d.objectStoreNames.contains('staat')) d.createObjectStore('staat');
+          if (!d.objectStoreNames.contains('verzoeken')) d.createObjectStore('verzoeken');
+          // versie 1 bewaarde één verzoek onder 'huidig': overzetten naar de lijst
+          var q = tx.objectStore('staat').get('huidig');
+          q.onsuccess = function () {
+            var oud = q.result;
+            if (oud && oud.paginas) {
+              oud.id = oud.id || uid(); oud.gewijzigd = oud.gewijzigd || Date.now();
+              tx.objectStore('verzoeken').put(oud, oud.id);
+              tx.objectStore('staat').put(oud.id, 'actief');
+            }
+            tx.objectStore('staat').delete('huidig');
+          };
+        };
         r.onsuccess = function () { res(r.result); };
         r.onerror = function () { rej(r.error); };
       });
     }
     return dbBelofte;
   }
-  function laadOpslag() {
+  function dbGet(store, sleutel) {
     return db().then(function (d) {
       return new Promise(function (res) {
-        var q = d.transaction('staat').objectStore('staat').get('huidig');
+        var q = d.transaction(store).objectStore(store).get(sleutel);
         q.onsuccess = function () { res(q.result || null); };
         q.onerror = function () { res(null); };
       });
     }).catch(function () { return null; });
   }
+  function dbAlles() {
+    return db().then(function (d) {
+      return new Promise(function (res) {
+        var q = d.transaction('verzoeken').objectStore('verzoeken').getAll();
+        q.onsuccess = function () { res(q.result || []); };
+        q.onerror = function () { res([]); };
+      });
+    }).catch(function () { return []; });
+  }
+  function dbVerwijder(id) {
+    return db().then(function (d) {
+      return new Promise(function (res) {
+        var tx = d.transaction('verzoeken', 'readwrite');
+        tx.objectStore('verzoeken').delete(id);
+        tx.oncomplete = res; tx.onerror = res;
+      });
+    });
+  }
   var bewaarTimer = null;
   function bewaar() {
+    staat.gewijzigd = Date.now();
     $('status').textContent = 'Opslaan...';
     clearTimeout(bewaarTimer);
-    bewaarTimer = setTimeout(function () {
-      db().then(function (d) {
-        var tx = d.transaction('staat', 'readwrite');
-        tx.objectStore('staat').put(staat, 'huidig');
-        tx.oncomplete = function () { $('status').textContent = 'Bewaard in deze browser'; };
-        tx.onerror = function () { $('status').textContent = 'Niet bewaard: download het verzoek als back-up'; };
-      }).catch(function () { $('status').textContent = 'Browseropslag niet beschikbaar'; });
-    }, 400);
+    bewaarTimer = setTimeout(bewaarNu, 400);
+  }
+  function bewaarNu() {
+    clearTimeout(bewaarTimer); bewaarTimer = null;
+    var s = staat;
+    return db().then(function (d) {
+      return new Promise(function (res) {
+        var tx = d.transaction(['verzoeken', 'staat'], 'readwrite');
+        tx.objectStore('verzoeken').put(s, s.id);
+        tx.objectStore('staat').put(s.id, 'actief');
+        tx.oncomplete = function () { $('status').textContent = 'Opgeslagen'; res(); };
+        tx.onerror = function () { $('status').textContent = 'Niet opgeslagen: download het verzoek als back-up'; res(); };
+      });
+    }).catch(function () { $('status').textContent = 'Browseropslag niet beschikbaar'; });
+  }
+  // openstaande wijziging direct wegschrijven als het tabblad sluit of naar de achtergrond gaat
+  document.addEventListener('visibilitychange', function () { if (document.hidden && bewaarTimer) bewaarNu(); });
+  window.addEventListener('pagehide', function () { if (bewaarTimer) bewaarNu(); });
+  // vraag de browser de opslag niet op te ruimen bij ruimtegebrek
+  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
+
+  function wisselNaar(nieuw) {
+    var klaar = bewaarTimer ? bewaarNu() : Promise.resolve();
+    return klaar.then(function () {
+      staat = nieuw; tekenDoel = null;
+      vulMeta(); render(); return bewaarNu();
+    });
   }
 
   var meldTimer = null;
@@ -203,8 +257,14 @@
     l1.appendChild(invoer(w, 'huidig', 'huidig', 'Wat er nu staat (leeg laten bij nieuwe tekst)', 3)); k.appendChild(l1);
     var l2 = el('label', null, 'Nieuwe tekst');
     l2.appendChild(invoer(w, 'nieuw', 'nieuw', 'Wat er moet komen te staan (leeg laten bij verwijderen)', 3)); k.appendChild(l2);
-    var l3 = el('label', null, 'Toelichting (optioneel)');
-    l3.appendChild(invoer(w, 'toelichting', 'toel', 'Bijv. zelfde opmaak houden, link naar /offerte', 2)); k.appendChild(l3);
+    var l3 = el('details', 'toel-blok');
+    if (w.toelichting) l3.open = true;
+    l3.appendChild(el('summary', null, 'Toelichting (optioneel)'));
+    var toel = invoer(w, 'toelichting', 'toel', 'Bijv. zelfde opmaak houden, link naar /offerte', 2);
+    toel.setAttribute('aria-label', 'Toelichting');
+    l3.appendChild(toel);
+    l3.addEventListener('toggle', function () { if (l3.open) toel.focus({ preventScroll: true }); });
+    k.appendChild(l3);
 
     k.addEventListener('mouseenter', function () { markeer(w.id, true); });
     k.addEventListener('mouseleave', function () { markeer(w.id, false); });
@@ -525,14 +585,13 @@
       var m = tekst.match(/<script id="data" type="application\/json">([\s\S]*?)<\/script>/);
       if (!m) throw new Error('Dit is geen wijzigingsverzoek');
       var d = JSON.parse(m[1]);
-      if (staat.paginas.length && !confirm('Het huidige verzoek vervangen door "' + f.name + '"?')) return;
-      staat = naarStaat(d); tekenDoel = null;
-      vulMeta(); render(); bewaar(); meld('Verzoek geopend');
+      // geopend bestand wordt een eigen verzoek in de lijst; het huidige blijft bewaard
+      return wisselNaar(naarStaat(d)).then(function () { meld('Verzoek geopend en opgeslagen'); });
     }).catch(function (err) { meld(err.message); });
   });
   function naarStaat(d) {
     var s = {
-      versie: 1,
+      versie: 1, id: uid(), gewijzigd: Date.now(),
       meta: { titel: d.titel || '', website: d.website || '', datum: d.datum || '', afzender: d.afzender || '', ontvanger: d.ontvanger || '', intro: d.intro || '' },
       paginas: []
     };
@@ -558,20 +617,64 @@
     return s;
   }
 
+  function isLeeg(s) { return !s.paginas.length; }
+
   $('btn-nieuw').addEventListener('click', function () {
-    if (staat.paginas.length && !confirm('Nieuw verzoek beginnen? Het huidige verzoek wordt gewist (download het eerst als je het wilt bewaren).')) return;
-    staat = leegStaat(staat); tekenDoel = null;
-    vulMeta(); render(); bewaar();
+    if (isLeeg(staat)) { meld('Dit verzoek is nog leeg'); return; }
+    wisselNaar(leegStaat(staat)).then(function () { meld('Nieuw verzoek. Het vorige staat bij Mijn verzoeken.'); });
   });
+
+  // ---------- mijn verzoeken ----------
+  function tijdTekst(t) {
+    return new Date(t).toLocaleString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  }
+  function toonVerzoeken() {
+    var klaar = bewaarTimer ? bewaarNu() : Promise.resolve();
+    klaar.then(dbAlles).then(function (lijst) {
+      lijst = lijst.filter(function (v) { return v.id === staat.id || !isLeeg(v); })
+        .sort(function (a, b) { return (b.gewijzigd || 0) - (a.gewijzigd || 0); });
+      var ul = $('verzoeken-lijst'); ul.innerHTML = '';
+      if (!lijst.length) ul.appendChild(el('li', 'leeg-kaarten', 'Nog geen verzoeken bewaard.'));
+      lijst.forEach(function (v) {
+        var li = el('li', 'verzoek' + (v.id === staat.id ? ' huidig' : ''));
+        var info = el('div', 'verzoek-info');
+        var aantal = v.paginas.reduce(function (n, p) { return n + p.wijzigingen.length; }, 0);
+        var namen = v.paginas.map(function (p) { return p.pagina || 'Pagina'; }).join(', ');
+        info.appendChild(el('strong', null, (v.meta.titel || 'Wijzigingsverzoek') + (v.id === staat.id ? ' (open)' : '')));
+        info.appendChild(el('span', null, [v.meta.website, namen].filter(Boolean).join(' · ')));
+        info.appendChild(el('span', null, v.paginas.length + (v.paginas.length === 1 ? ' pagina, ' : " pagina's, ") +
+          aantal + (aantal === 1 ? ' wijziging' : ' wijzigingen') + ' · laatst bewerkt ' + tijdTekst(v.gewijzigd || 0)));
+        li.appendChild(info);
+        var acties = el('div', 'verzoek-acties');
+        if (v.id !== staat.id) {
+          acties.appendChild(knop('Openen', 'klein primair', null, function () {
+            wisselNaar(v).then(function () { $('verzoeken').close(); meld('Verzoek geopend'); });
+          }));
+        }
+        acties.appendChild(knop('Verwijderen', 'klein gevaar', null, function () {
+          if (!confirm('"' + (v.meta.titel || 'Wijzigingsverzoek') + '" definitief verwijderen?')) return;
+          dbVerwijder(v.id).then(function () {
+            if (v.id === staat.id) { staat = leegStaat(staat); vulMeta(); render(); bewaarNu(); }
+            toonVerzoeken();
+          });
+        }));
+        li.appendChild(acties);
+        ul.appendChild(li);
+      });
+      if (!$('verzoeken').open) $('verzoeken').showModal();
+    });
+  }
+  $('btn-verzoeken').addEventListener('click', toonVerzoeken);
+  $('verzoeken-sluit').addEventListener('click', function () { $('verzoeken').close(); });
 
   // ---------- start ----------
   staat = leegStaat();
   vulMeta();
-  laadOpslag().then(function (opgeslagen) {
+  dbGet('staat', 'actief').then(function (id) { return id ? dbGet('verzoeken', id) : null; }).then(function (opgeslagen) {
     // niet overschrijven als er al geplakt is voordat de opslag geladen was
-    if (opgeslagen && opgeslagen.versie === 1 && !staat.paginas.length) {
+    if (opgeslagen && opgeslagen.versie === 1 && isLeeg(staat)) {
       staat = opgeslagen; vulMeta(); render();
-      $('status').textContent = 'Bewaard in deze browser';
+      $('status').textContent = 'Opgeslagen';
     }
   });
 })();

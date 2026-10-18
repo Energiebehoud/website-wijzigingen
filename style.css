@@ -87,6 +87,31 @@ textarea { resize: vertical; }
 .kaart .huidig { background: var(--oud-vlak); }
 .kaart .nieuw { background: var(--nieuw-vlak); }
 .leeg-kaarten { color: var(--zacht); font-size: 14px; margin: 0; }
+.toel-blok summary {
+  cursor: pointer; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--zacht); font-weight: 600;
+  padding: 2px 0; user-select: none;
+}
+.toel-blok summary:hover { color: var(--merk-donker); }
+.toel-blok[open] summary { margin-bottom: 3px; }
+
+.verzoeken {
+  border: 0; border-radius: 12px; padding: 0; width: min(720px, calc(100% - 32px)); max-height: calc(100% - 64px);
+  box-shadow: 0 10px 40px rgba(0,0,0,.25); color: var(--tekst);
+}
+.verzoeken::backdrop { background: rgba(20, 30, 25, .45); }
+.verzoeken-kop {
+  position: sticky; top: 0; background: #fff; display: flex; justify-content: space-between; align-items: center;
+  padding: 14px 18px; border-bottom: 1px solid var(--lijn);
+}
+.verzoeken-kop h2 { margin: 0; font-size: 18px; }
+#verzoeken-lijst { list-style: none; margin: 0; padding: 8px 18px 18px; }
+.verzoek { display: flex; gap: 12px; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--lijn); }
+.verzoek:last-child { border-bottom: 0; }
+.verzoek.huidig strong { color: var(--merk-donker); }
+.verzoek-info { display: flex; flex-direction: column; min-width: 0; }
+.verzoek-info span { font-size: 13px; color: var(--zacht); overflow-wrap: anywhere; }
+.verzoek-acties { display: flex; gap: 6px; flex: none; }
+@media (max-width: 520px) { .verzoek { flex-direction: column; align-items: flex-start; } }
 
 .url-form { display: flex; flex-direction: column; gap: 6px; }
 .url-form > label { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--zacht); font-weight: 600; }

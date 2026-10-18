@@ -12,6 +12,7 @@
   <div class="merk">Wijzigingsverzoek <span>website</span></div>
   <div class="acties">
     <span id="status" class="status"></span>
+    <button id="btn-verzoeken" type="button">Mijn verzoeken</button>
     <button id="btn-nieuw" type="button">Nieuw</button>
     <button id="btn-open" type="button">Openen</button>
     <button id="btn-bekijk" type="button">Bekijken</button>
@@ -60,9 +61,18 @@
       <li>Vul per nummer de huidige en de nieuwe tekst in. Kaders kun je verslepen en aan de hoek groter of kleiner maken.</li>
       <li>Klik op <b>Download voor webbouwer</b> en stuur dat bestand mee in de mail. Het opent in elke browser en is als PDF te printen.</li>
     </ol>
-    <p>Alles wordt automatisch bewaard in deze browser. Een gedownload verzoek kun je later via <b>Openen</b> weer verder bewerken.</p>
+    <p>Alles wordt bij elke wijziging automatisch opgeslagen. Onder <b>Mijn verzoeken</b> staan al je verzoeken; open er een om verder te gaan. <b>Nieuw</b> begint een nieuw verzoek zonder het vorige te wissen.</p>
+    <p>De opslag zit in deze browser op deze computer. Wil je op een andere computer verder, download dan het verzoek en open het daar met <b>Openen</b>.</p>
   </section>
 </main>
+
+<dialog id="verzoeken" class="verzoeken" aria-labelledby="verzoeken-kop">
+  <div class="verzoeken-kop">
+    <h2 id="verzoeken-kop">Mijn verzoeken</h2>
+    <button id="verzoeken-sluit" type="button" class="klein">Sluiten</button>
+  </div>
+  <ul id="verzoeken-lijst"></ul>
+</dialog>
 
 <div id="melding" class="melding" role="status" aria-live="polite"></div>
 <script src="app.js"></script>

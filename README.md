@@ -14,7 +14,8 @@ Live: https://energiebehoud.github.io/website-wijzigingen/
   Hetzelfde sjabloon zit in de Claude-skill `website-wijzigingen` (repo `energiebehoud-skills`);
   houd ze gelijk.
 
-Alle gegevens blijven in de browser (IndexedDB). Er gaat niets naar een server.
+Alle gegevens blijven in de browser (IndexedDB): elk verzoek wordt apart en automatisch opgeslagen
+(lijst onder **Mijn verzoeken**). Er gaat niets naar een server, behalve het pagina-adres naar Microlink.
 Een gedownload verzoek kan via **Openen** weer worden bewerkt, ook verzoeken die de
 Claude-skill heeft gemaakt.
 
