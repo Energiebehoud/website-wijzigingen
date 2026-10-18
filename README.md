@@ -1,7 +1,7 @@
 # Wijzigingsverzoek website
 
 Webapp van Energiebehoud BV om wijzigingen voor de websitebouwer door te geven.
-Plak een screenshot, sleep kaders over wat er anders moet en vul per nummer de huidige
+Vul een pagina-adres in (de app maakt het screenshot via Microlink) of plak zelf een screenshot, sleep kaders over wat er anders moet en vul per nummer de huidige
 en nieuwe tekst in. Download levert één zelfstandig HTML-bestand op dat de bouwer in
 elke browser opent (met kopieerknoppen) en dat als PDF te printen is.
 

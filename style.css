@@ -88,6 +88,15 @@ textarea { resize: vertical; }
 .kaart .nieuw { background: var(--nieuw-vlak); }
 .leeg-kaarten { color: var(--zacht); font-size: 14px; margin: 0; }
 
+.url-form { display: flex; flex-direction: column; gap: 6px; }
+.url-form > label { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--zacht); font-weight: 600; }
+.url-rij { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.url-rij #url-invoer { flex: 1 1 320px; }
+.url-rij select { width: auto; }
+.vink { display: flex; align-items: center; gap: 6px; font-size: 14px; white-space: nowrap; }
+.vink input { width: auto; }
+button:disabled { opacity: .6; cursor: progress; }
+
 .dropzone {
   display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; cursor: pointer;
   border: 2px dashed var(--merk); border-radius: 10px; background: #fff; padding: 36px 16px; margin-bottom: 20px; color: var(--zacht);

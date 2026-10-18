@@ -32,16 +32,30 @@
 
   <div id="paginas"></div>
 
+  <form id="url-form" class="kaartblok url-form">
+    <label for="url-invoer">Screenshot maken van een pagina</label>
+    <div class="url-rij">
+      <input id="url-invoer" type="text" inputmode="url" autocomplete="url" spellcheck="false" required placeholder="https://labellift.vercel.app/opname/woning-zoeken">
+      <select id="url-apparaat" aria-label="Formaat">
+        <option value="desktop">Computer</option>
+        <option value="mobiel">Mobiel</option>
+      </select>
+      <label class="vink"><input id="url-heel" type="checkbox" checked> Hele pagina</label>
+      <button id="url-knop" type="submit" class="primair">Screenshot maken</button>
+    </div>
+    <p class="hint">Het screenshot wordt gemaakt door de screenshotdienst Microlink (gratis, ongeveer 25 per dag). Pagina's achter een inlog kan die dienst niet zien; plak daarvan zelf een screenshot.</p>
+  </form>
+
   <label id="dropzone" class="dropzone" tabindex="0">
     <input id="bestand-shot" type="file" accept="image/*" multiple hidden>
-    <strong>Plak een screenshot (Ctrl+V)</strong>
+    <strong>Of plak zelf een screenshot (Ctrl+V)</strong>
     <span>of sleep een afbeelding hierheen, of klik om een bestand te kiezen</span>
   </label>
 
   <section class="uitleg">
     <h2>Zo werkt het</h2>
     <ol>
-      <li>Maak een screenshot van de webpagina (Windows: <kbd>Win</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd>) en plak het hier met <kbd>Ctrl</kbd>+<kbd>V</kbd>.</li>
+      <li>Vul het adres van de pagina in en klik op <b>Screenshot maken</b>. Of maak zelf een screenshot (Windows: <kbd>Win</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd>) en plak het hier met <kbd>Ctrl</kbd>+<kbd>V</kbd>.</li>
       <li>Sleep op het screenshot een kader over de tekst die anders moet. Elk kader krijgt een nummer.</li>
       <li>Vul per nummer de huidige en de nieuwe tekst in. Kaders kun je verslepen en aan de hoek groter of kleiner maken.</li>
       <li>Klik op <b>Download voor webbouwer</b> en stuur dat bestand mee in de mail. Het opent in elke browser en is als PDF te printen.</li>

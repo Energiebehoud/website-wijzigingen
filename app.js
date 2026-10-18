@@ -129,6 +129,7 @@
     var kop = el('div', 'pagina-kop');
     kop.appendChild(invoer(p, 'pagina', 'naam', 'Paginanaam, bijv. Home of Contact'));
     kop.appendChild(invoer(p, 'url', 'url', 'Adres van de pagina, bijv. https://www.energiebehoud.nl/contact'));
+    kop.appendChild(knop('Nieuw screenshot', 'klein', 'Screenshot opnieuw maken vanaf het adres', function (e) { vernieuwScreenshot(p, e.currentTarget); }));
     kop.appendChild(knop('↑', 'klein', 'Pagina omhoog', function () { verplaats(pi, -1); }));
     kop.appendChild(knop('↓', 'klein', 'Pagina omlaag', function () { verplaats(pi, 1); }));
     kop.appendChild(knop('Verwijderen', 'klein gevaar', 'Pagina met screenshot verwijderen', function () {
@@ -357,6 +358,73 @@
       if (s) { s.scrollIntoView({ behavior: 'smooth', block: 'start' }); var n = s.querySelector('.naam'); if (n) n.focus({ preventScroll: true }); }
       meld(lijst.length === 1 ? 'Screenshot toegevoegd' : lijst.length + ' screenshots toegevoegd');
     }).catch(function (e) { meld(e.message); });
+  }
+
+  // ---------- screenshot maken vanaf een URL (via Microlink; de browser mag zelf geen andere site vastleggen) ----------
+  var APPARATEN = {
+    desktop: { 'viewport.width': 1366, 'viewport.height': 900, 'viewport.deviceScaleFactor': 1 },
+    mobiel: { 'viewport.width': 390, 'viewport.height': 844, 'viewport.deviceScaleFactor': 2, 'viewport.isMobile': true }
+  };
+  function haalScreenshot(url, apparaat, heel) {
+    var q = { url: url, screenshot: true, meta: false, force: true, 'screenshot.fullPage': !!heel };
+    var a = APPARATEN[apparaat] || APPARATEN.desktop;
+    Object.keys(a).forEach(function (k) { q[k] = a[k]; });
+    var qs = Object.keys(q).map(function (k) { return encodeURIComponent(k) + '=' + encodeURIComponent(q[k]); }).join('&');
+    return fetch('https://api.microlink.io/?' + qs).then(function (r) {
+      if (r.status === 429) throw new Error('Daglimiet van de screenshotdienst bereikt. Plak het screenshot zelf (Ctrl+V).');
+      return r.json().catch(function () { throw new Error('Screenshotdienst gaf geen geldig antwoord'); });
+    }).then(function (j) {
+      if (j.status !== 'success' || !j.data || !j.data.screenshot) {
+        throw new Error('Screenshot mislukt' + (j.message ? ': ' + j.message : '') + '. Klopt het adres?');
+      }
+      return fetch(j.data.screenshot.url);
+    }).then(function (r) {
+      if (!r.ok) throw new Error('Screenshot kon niet worden opgehaald');
+      return r.blob();
+    }).then(verwerkAfbeelding);
+  }
+  function naamUitUrl(url) {
+    try {
+      var u = new URL(url);
+      var deel = u.pathname.split('/').filter(Boolean).pop();
+      if (!deel) return 'Home';
+      deel = decodeURIComponent(deel).replace(/\.\w+$/, '').replace(/[-_]+/g, ' ');
+      return deel.charAt(0).toUpperCase() + deel.slice(1);
+    } catch (e) { return ''; }
+  }
+  function normaliseerUrl(v) {
+    v = v.trim();
+    if (v && !/^https?:\/\//i.test(v)) v = 'https://' + v;
+    return v;
+  }
+  $('url-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var url = normaliseerUrl($('url-invoer').value);
+    if (!url) return;
+    var apparaat = $('url-apparaat').value, heel = $('url-heel').checked;
+    var k = $('url-knop'); k.disabled = true; k.textContent = 'Bezig (10-30 sec.)...';
+    haalScreenshot(url, apparaat, heel).then(function (bron) {
+      var p = { id: uid(), pagina: naamUitUrl(url), url: url, bron: bron, apparaat: apparaat, heel: heel, wijzigingen: [] };
+      staat.paginas.push(p);
+      if (!staat.meta.website) { try { staat.meta.website = new URL(url).origin; vulMeta(); } catch (er) {} }
+      $('url-invoer').value = '';
+      bewaar(); render();
+      var s = document.querySelector('.pagina[data-id="' + p.id + '"]');
+      if (s) s.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      meld('Screenshot gemaakt. Sleep nu een kader over wat er anders moet.');
+    }).catch(function (er) { meld(er.message); }).then(function () {
+      k.disabled = false; k.textContent = 'Screenshot maken';
+    });
+  });
+  function vernieuwScreenshot(p, knopEl) {
+    var url = normaliseerUrl(p.url || '');
+    if (!url) { meld('Vul eerst het adres van de pagina in'); return; }
+    if (p.wijzigingen.some(function (w) { return w.rect; }) &&
+        !confirm('Nieuw screenshot maken? De kaders blijven staan; controleer daarna of ze nog op de goede plek zitten.')) return;
+    knopEl.disabled = true; knopEl.textContent = 'Bezig...';
+    haalScreenshot(url, p.apparaat || 'desktop', p.heel !== false).then(function (bron) {
+      p.bron = bron; p.url = url; bewaar(); render(); meld('Screenshot vernieuwd');
+    }).catch(function (er) { meld(er.message); knopEl.disabled = false; knopEl.textContent = 'Nieuw screenshot'; });
   }
 
   document.addEventListener('paste', function (e) {
