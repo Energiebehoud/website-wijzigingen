@@ -1,6 +1,30 @@
 (function () {
   'use strict';
 
+  // ── Roterende natuurfoto-achtergrond (wisselt elke 3 uur) ──
+  (function () {
+    var fotos = [
+      'photo-1506744038136-46273834b3fb', // bergmeer
+      'photo-1470071459604-3b5ec3a7fe05', // mistige heuvels
+      'photo-1441974231531-c6227db76b6e', // bospad zonlicht
+      'photo-1472214103451-9374bd1c798e', // groen dal
+      'photo-1465146344425-f00d5f5c8f07', // bloemenveld
+      'photo-1501854140801-50d01698950b', // herfstbos
+      'photo-1518173946687-a544bf38a58a', // ochtenddauw
+      'photo-1507003211169-0a1dd7228f2d', // kustlijn
+      'photo-1464822759023-fed622ff2c3b', // bergtoppen
+      'photo-1469474968028-56623f02e42e', // zonsondergang heuvels
+      'photo-1426604966848-d7adac402bff', // lavendelveld
+      'photo-1500534314263-0869cef34a40'  // meeuw kust
+    ];
+    var uur = Math.floor(Date.now() / (3 * 3600000));
+    var foto = fotos[uur % fotos.length];
+    var url = 'https://images.unsplash.com/' + foto + '?w=1920&q=75&auto=format&fit=crop';
+    var img = new Image();
+    img.onload = function () { document.documentElement.style.setProperty('--natuur-foto', 'url(' + url + ')'); };
+    img.src = url;
+  })();
+
   var SOORTEN = ['Tekst vervangen', 'Tekst toevoegen', 'Tekst verwijderen', 'Knop of link', 'Afbeelding', 'Opmaak', 'Overig'];
   var STANDAARD_INTRO = 'Hierbij de gewenste aanpassingen. Per pagina zie je een screenshot met rode nummers; daaronder staat per nummer de huidige en de nieuwe tekst. Met de knop "Kopieer" neem je de nieuwe tekst exact over.';
   var MAX_BREEDTE = 2000;

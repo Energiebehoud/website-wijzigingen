@@ -14,24 +14,40 @@
 body {
   margin: 0; background: var(--achter); color: var(--tekst);
   font: 15px/1.45 "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+  min-height: 100vh;
+}
+body::before {
+  content: ''; position: fixed; inset: 0; z-index: -1;
+  background: var(--natuur-foto, var(--achter)) center/cover no-repeat fixed;
+  transition: opacity 1.5s ease;
+}
+body::after {
+  content: ''; position: fixed; inset: 0; z-index: -1;
+  background: rgba(238,241,239,.82);
+  backdrop-filter: blur(2px);
 }
 button, input, select, textarea { font: inherit; color: inherit; }
 button {
-  cursor: pointer; border: 1px solid var(--lijn); background: #fff; border-radius: 8px; padding: 10px 18px;
-  font-weight: 500; transition: all .15s ease; box-shadow: 0 1px 2px rgba(0,0,0,.06);
+  cursor: pointer; border: 1px solid rgba(0,0,0,.1); background: linear-gradient(to bottom, #fff, #f5f7f6); border-radius: 8px; padding: 10px 18px;
+  font-weight: 600; transition: all .12s ease;
+  box-shadow: 0 4px 0 rgba(0,0,0,.12), 0 2px 6px rgba(0,0,0,.06);
+  position: relative; top: 0;
 }
-button:hover { border-color: var(--merk); background: var(--vlak); box-shadow: 0 2px 6px rgba(0,0,0,.08); }
-button:active { transform: translateY(1px); box-shadow: none; }
-button.primair { background: var(--merk-donker); border-color: var(--merk-donker); color: #fff; font-weight: 600; box-shadow: 0 2px 6px rgba(31,127,56,.25); }
-button.primair:hover { background: #18692e; box-shadow: 0 3px 10px rgba(31,127,56,.3); }
-button.klein { padding: 6px 12px; font-size: 13px; }
-button.gevaar:hover { border-color: var(--marker); color: var(--marker); background: #fff5f5; }
-button.aan { background: var(--marker); border-color: var(--marker); color: #fff; box-shadow: 0 2px 6px rgba(224,38,43,.25); }
+button:hover { border-color: var(--merk); background: linear-gradient(to bottom, #fff, #eef6ef); box-shadow: 0 4px 0 rgba(44,167,75,.25), 0 3px 10px rgba(0,0,0,.08); }
+button:active { top: 3px; box-shadow: 0 1px 0 rgba(0,0,0,.12), 0 1px 2px rgba(0,0,0,.06); }
+button.primair { background: linear-gradient(to bottom, #28a745, var(--merk-donker)); border-color: rgba(0,0,0,.15); color: #fff; box-shadow: 0 4px 0 #14602a, 0 3px 10px rgba(31,127,56,.2); }
+button.primair:hover { background: linear-gradient(to bottom, #2dbf4e, #1a8a3a); box-shadow: 0 4px 0 #14602a, 0 4px 14px rgba(31,127,56,.3); }
+button.primair:active { top: 3px; box-shadow: 0 1px 0 #14602a, 0 1px 2px rgba(31,127,56,.15); }
+button.klein { padding: 7px 14px; font-size: 13px; box-shadow: 0 3px 0 rgba(0,0,0,.1), 0 1px 4px rgba(0,0,0,.05); }
+button.klein:active { top: 2px; box-shadow: 0 1px 0 rgba(0,0,0,.1); }
+button.gevaar:hover { border-color: var(--marker); color: var(--marker); background: linear-gradient(to bottom, #fff, #fff5f5); box-shadow: 0 4px 0 rgba(224,38,43,.2), 0 2px 6px rgba(0,0,0,.06); }
+button.aan { background: linear-gradient(to bottom, #e53840, #c42028); border-color: rgba(0,0,0,.15); color: #fff; box-shadow: 0 4px 0 #9a1a20, 0 3px 10px rgba(224,38,43,.2); }
+button.aan:active { top: 3px; box-shadow: 0 1px 0 #9a1a20; }
 
 .balk {
-  position: sticky; top: 0; z-index: 20; background: #fff; border-bottom: 3px solid var(--merk);
+  position: sticky; top: 0; z-index: 20; background: rgba(255,255,255,.92); backdrop-filter: blur(12px); border-bottom: 3px solid var(--merk);
   display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; padding: 12px 20px;
-  box-shadow: 0 2px 8px rgba(0,0,0,.06);
+  box-shadow: 0 2px 12px rgba(0,0,0,.08);
 }
 .merk { font-weight: 700; font-size: 19px; letter-spacing: -.01em; }
 .merk span { color: var(--merk-donker); }
@@ -39,7 +55,7 @@ button.aan { background: var(--marker); border-color: var(--marker); color: #fff
 .status { color: var(--zacht); font-size: 13px; }
 
 main { max-width: 1400px; margin: 0 auto; padding: 24px 20px 80px; }
-.kaartblok { background: #fff; border: 1px solid var(--lijn); border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 4px rgba(0,0,0,.04); }
+.kaartblok { background: rgba(255,255,255,.9); backdrop-filter: blur(8px); border: 1px solid var(--lijn); border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
 .gegevens { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
 .veld { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .veld.breed { grid-column: 1 / -1; }
@@ -50,7 +66,7 @@ input, select, textarea {
 input:focus, select:focus, textarea:focus { outline: none; border-color: var(--merk); box-shadow: 0 0 0 3px rgba(44,167,75,.15); }
 textarea { resize: vertical; }
 
-.pagina { background: #fff; border: 1px solid var(--lijn); border-radius: 12px; margin-bottom: 20px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,.04); }
+.pagina { background: rgba(255,255,255,.9); backdrop-filter: blur(8px); border: 1px solid var(--lijn); border-radius: 12px; margin-bottom: 20px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
 .pagina-kop { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 12px 16px; background: var(--vlak); border-bottom: 1px solid var(--lijn); }
 .pagina-kop .naam { flex: 1 1 200px; font-weight: 600; }
 .pagina-kop .url { flex: 2 1 260px; }
@@ -147,12 +163,12 @@ button.ai::before { content: "\270E  "; }
 .url-rij select { width: auto; }
 .vink { display: flex; align-items: center; gap: 6px; font-size: 14px; white-space: nowrap; }
 .vink input { width: auto; }
-button:disabled { opacity: .6; cursor: progress; }
+button:disabled { opacity: .6; cursor: progress; top: 0; box-shadow: 0 2px 0 rgba(0,0,0,.08); }
 
 .dropzone {
   display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; cursor: pointer;
-  border: 2px dashed var(--merk); border-radius: 12px; background: #fff; padding: 40px 20px; margin-bottom: 20px; color: var(--zacht);
-  transition: background .15s, border-color .15s; box-shadow: 0 1px 4px rgba(0,0,0,.04);
+  border: 2px dashed var(--merk); border-radius: 12px; background: rgba(255,255,255,.9); backdrop-filter: blur(8px); padding: 40px 20px; margin-bottom: 20px; color: var(--zacht);
+  transition: background .15s, border-color .15s; box-shadow: 0 2px 8px rgba(0,0,0,.06);
 }
 .dropzone strong { color: var(--tekst); font-size: 17px; }
 .dropzone:focus, .dropzone.over, body.slepen .dropzone { background: var(--nieuw-vlak); outline: none; }
