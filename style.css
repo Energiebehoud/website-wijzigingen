@@ -90,6 +90,17 @@ textarea { resize: vertical; }
 .kaart .huidig { background: var(--oud-vlak); }
 .kaart .nieuw { background: var(--nieuw-vlak); }
 .leeg-kaarten { color: var(--zacht); font-size: 14px; margin: 0; }
+.banner {
+  display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between;
+  background: var(--nieuw-vlak); border: 1px solid var(--merk); border-radius: 10px; padding: 12px 16px; margin-bottom: 20px;
+}
+.banner[hidden] { display: none; }
+button.waarschuwing { border-color: #c77700; color: #8a5200; }
+.cloud-regel {
+  display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; justify-content: space-between;
+  padding: 10px 18px; background: var(--vlak); border-bottom: 1px solid var(--lijn); font-size: 13px; color: var(--zacht);
+}
+
 .herschrijf { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; margin-top: -2px; }
 button.ai { border-color: var(--merk); color: var(--merk-donker); font-weight: 600; }
 button.ai::before { content: "\270E  "; }

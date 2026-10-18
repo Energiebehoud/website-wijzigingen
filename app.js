@@ -81,6 +81,183 @@
       });
     });
   }
+  function dbZet(store, waarde, sleutel) {
+    return db().then(function (d) {
+      return new Promise(function (res) {
+        var tx = d.transaction(store, 'readwrite');
+        tx.objectStore(store).put(waarde, sleutel);
+        tx.oncomplete = res; tx.onerror = res;
+      });
+    });
+  }
+
+  // ---------- OneDrive: alle verzoeken op elke computer ----------
+  // Elk verzoek staat als verzoek-<id>.json in de OneDrive-map. Lokaal (IndexedDB) blijft de werkkopie,
+  // zodat de app ook zonder verbinding werkt. _etag/_gesynct onthouden welke versie in OneDrive staat.
+  var cloud = { aan: false, naam: '', status: 'uit', melding: '', eersteSync: true };
+  var BESTAND = function (id) { return 'verzoek-' + id + '.json'; };
+  var ID_UIT = /^verzoek-([a-z0-9]+)\.json$/i;
+  var INSTELLINGEN = 'instellingen.json';
+  var pushTimers = {};
+  var syncBezig = null, laatsteSync = 0;
+
+  function schoon(s) {
+    var c = {};
+    Object.keys(s).forEach(function (k) { if (k.charAt(0) !== '_') c[k] = s[k]; });
+    return c;
+  }
+  function isVuil(s) { return !s._etag || s.gewijzigd !== s._gesynct; }
+
+  function zetCloud(status, melding) {
+    cloud.status = status; cloud.melding = melding || '';
+    var k = $('btn-cloud'), b = $('cloud-banner');
+    if (!k) return;
+    k.classList.toggle('primair', status === 'uit' || status === 'login');
+    k.classList.toggle('waarschuwing', status === 'fout');
+    k.disabled = status === 'laden';
+    k.textContent = {
+      laden: 'OneDrive...', uit: 'Koppel OneDrive', login: 'Opnieuw inloggen', bezig: 'OneDrive: bezig...',
+      ok: 'OneDrive ✓', fout: 'OneDrive: fout'
+    }[status] || 'OneDrive';
+    k.title = status === 'ok'
+      ? 'Gekoppeld met de OneDrive van ' + cloud.naam + (laatsteSync ? '. Laatst bijgewerkt om ' + new Date(laatsteSync).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' }) : '') + '. Klik om nu bij te werken.'
+      : (melding || '');
+    b.hidden = !(status === 'uit' || status === 'login');
+    $('cloud-banner-tekst').textContent = status === 'login'
+      ? 'De koppeling met OneDrive is verlopen. Log opnieuw in, dan worden je wijzigingen weer op al je computers bewaard.'
+      : 'Koppel je OneDrive, dan staan al je verzoeken op elke computer klaar. Je logt eenmalig in met je Microsoft-account.';
+    var afm = $('cloud-afmelden');
+    if (afm) afm.textContent = cloud.aan ? 'Ontkoppelen' : 'Koppel OneDrive';
+    var info = $('cloud-info');
+    if (info) info.textContent = cloud.aan
+      ? 'Je verzoeken staan in je OneDrive, map "' + OneDrive.map + '" (' + cloud.naam + ').'
+      : 'Je verzoeken staan alleen in deze browser. Koppel OneDrive om ze op al je computers te hebben.';
+  }
+  function cloudFout(e) {
+    console.warn('OneDrive', e);
+    if (e && (e.code === 'OPNIEUW_INLOGGEN' || e.status === 401)) { zetCloud('login'); return; }
+    if (e && e.code === 'NIET_AANGEMELD') { cloud.aan = false; zetCloud('uit'); return; }
+    zetCloud('fout', 'OneDrive niet bereikbaar' + (e && e.status ? ' (' + e.status + ')' : '') + '. Je werk staat veilig in deze browser en wordt later bijgewerkt.');
+  }
+
+  function planPush(s) {
+    if (!cloud.aan) return;
+    clearTimeout(pushTimers[s.id]);
+    pushTimers[s.id] = setTimeout(function () { push(s); }, 2500);
+  }
+  function push(s) {
+    clearTimeout(pushTimers[s.id]); delete pushTimers[s.id];
+    if (!cloud.aan || isLeeg(s) || !isVuil(s)) return Promise.resolve();
+    var versie = s.gewijzigd;
+    zetCloud('bezig');
+    return OneDrive.schrijf(BESTAND(s.id), schoon(s)).then(function (etag) {
+      s._etag = etag; s._gesynct = versie;
+      return dbZet('verzoeken', s, s.id);
+    }).then(function () { zetCloud('ok'); }, cloudFout);
+  }
+
+  function sync() {
+    if (!cloud.aan) return Promise.resolve();
+    if (syncBezig) return syncBezig;
+    zetCloud('bezig');
+    syncBezig = (bewaarTimer ? bewaarNu() : Promise.resolve()).then(function () {
+      return Promise.all([OneDrive.lijst(), dbAlles(), dbGet('staat', 'verwijderd')]);
+    }).then(function (r) {
+      var remote = {}, lokaal = {}, weg = r[2] || [], instellingen = null, taken = [];
+      r[0].forEach(function (i) {
+        var m = i.naam.match(ID_UIT);
+        if (m) remote[m[1]] = i; else if (i.naam === INSTELLINGEN) instellingen = i;
+      });
+      r[1].forEach(function (v) { lokaal[v.id] = v; });
+
+      // verwijderd op deze computer: ook in OneDrive weghalen
+      weg.forEach(function (id) {
+        if (remote[id]) taken.push(OneDrive.verwijder(BESTAND(id)));
+        delete remote[id]; delete lokaal[id];
+      });
+
+      Object.keys(lokaal).forEach(function (id) {
+        var l = id === staat.id ? staat : lokaal[id], rem = remote[id];
+        if (!rem) {
+          // was al eens in OneDrive en is daar weg: op een andere computer verwijderd
+          if (l._etag && !isVuil(l)) {
+            taken.push(dbVerwijder(id).then(function () {
+              if (id === staat.id) {
+                staat = leegStaat(staat); tekenDoel = null; vulMeta(); render(); bewaarNu();
+                meld('Dit verzoek is op een andere computer verwijderd');
+              }
+            }));
+          }
+          // nog niet bewaarde wijzigingen hier: niet weggooien, opnieuw in OneDrive zetten
+          else if (!isLeeg(l)) { delete l._etag; taken.push(push(l)); }
+          return;
+        }
+        if (rem.etag === l._etag) { if (isVuil(l)) taken.push(push(l)); return; }
+        // op een andere computer gewijzigd: nieuwste versie wint
+        taken.push(OneDrive.lees(rem).then(function (d) {
+          var nu = id === staat.id ? staat : l;
+          if (isVuil(nu) && (nu.gewijzigd || 0) > (d.gewijzigd || 0)) { nu._etag = rem.etag; return push(nu); }
+          d._etag = rem.etag; d._gesynct = d.gewijzigd;
+          clearTimeout(pushTimers[d.id]); delete pushTimers[d.id]; // geen oude versie meer wegschrijven
+          return dbZet('verzoeken', d, d.id).then(function () {
+            if (d.id === staat.id) { staat = d; tekenDoel = null; vulMeta(); render(); meld('Bijgewerkt met de versie van een andere computer'); }
+          });
+        }));
+      });
+
+      Object.keys(remote).forEach(function (id) {
+        if (lokaal[id]) return;
+        taken.push(OneDrive.lees(remote[id]).then(function (d) {
+          d._etag = remote[id].etag; d._gesynct = d.gewijzigd;
+          return dbZet('verzoeken', d, d.id);
+        }));
+      });
+
+      // API-sleutel van een andere computer overnemen als hier nog geen sleutel is
+      if (instellingen && !leesSleutel()) {
+        taken.push(OneDrive.lees(instellingen).then(function (i) { if (i && i.anthropicKey) zetSleutel(i.anthropicKey); }));
+      }
+      return Promise.all(taken).then(function () { if (weg.length) return dbZet('staat', [], 'verwijderd'); });
+    }).then(function () {
+      laatsteSync = Date.now(); zetCloud('ok');
+      // nieuwe computer: open het laatst bewerkte verzoek in plaats van een leeg verzoek
+      if (cloud.eersteSync && isLeeg(staat)) {
+        return dbAlles().then(function (lijst) {
+          var beste = lijst.filter(function (v) { return !isLeeg(v); })
+            .sort(function (a, b) { return (b.gewijzigd || 0) - (a.gewijzigd || 0); })[0];
+          if (beste) return wisselNaar(beste).then(function () { meld('Laatst bewerkte verzoek geopend'); });
+        });
+      }
+    }, cloudFout).then(function () { cloud.eersteSync = false; syncBezig = null; });
+    return syncBezig;
+  }
+
+  function verwijderVerzoek(id) {
+    return dbGet('staat', 'verwijderd').then(function (weg) {
+      weg = weg || [];
+      if (weg.indexOf(id) < 0) weg.push(id);
+      return dbZet('staat', weg, 'verwijderd');
+    }).then(function () { return dbVerwijder(id); }).then(function () { if (cloud.aan) sync(); });
+  }
+  function sleutelNaarCloud(sleutel) {
+    if (cloud.aan) OneDrive.schrijf(INSTELLINGEN, { anthropicKey: sleutel || '' }).catch(cloudFout);
+  }
+
+  function startCloud() {
+    if (!window.OneDrive) return;
+    zetCloud('laden');
+    OneDrive.init().then(function (a) {
+      if (!a) { zetCloud('uit'); return; }
+      cloud.aan = true; cloud.naam = a.name || a.username || '';
+      return sync();
+    }).catch(function (e) { console.warn('OneDrive', e); zetCloud('uit'); });
+  }
+  function koppel() {
+    zetCloud('laden');
+    (bewaarTimer ? bewaarNu() : Promise.resolve()).then(function () { return OneDrive.login(); })
+      .catch(function (e) { cloudFout(e); meld('Inloggen lukte niet'); });
+  }
+  window.addEventListener('focus', function () { if (cloud.aan && Date.now() - laatsteSync > 20000) sync(); });
   var bewaarTimer = null;
   function bewaar() {
     staat.gewijzigd = Date.now();
@@ -96,7 +273,7 @@
         var tx = d.transaction(['verzoeken', 'staat'], 'readwrite');
         tx.objectStore('verzoeken').put(s, s.id);
         tx.objectStore('staat').put(s.id, 'actief');
-        tx.oncomplete = function () { $('status').textContent = 'Opgeslagen'; res(); };
+        tx.oncomplete = function () { $('status').textContent = 'Opgeslagen'; planPush(s); res(); };
         tx.onerror = function () { $('status').textContent = 'Niet opgeslagen: download het verzoek als back-up'; res(); };
       });
     }).catch(function () { $('status').textContent = 'Browseropslag niet beschikbaar'; });
@@ -374,12 +551,14 @@
   }
   $('btn-ai').addEventListener('click', openSleutel);
   $('ai-sluit').addEventListener('click', function () { $('ai-instellingen').close(); });
-  $('ai-wis').addEventListener('click', function () { zetSleutel(''); $('ai-sleutel').value = ''; $('ai-status').textContent = 'Sleutel verwijderd.'; });
+  $('ai-wis').addEventListener('click', function () {
+    zetSleutel(''); sleutelNaarCloud(''); $('ai-sleutel').value = ''; $('ai-status').textContent = 'Sleutel verwijderd.';
+  });
   $('ai-form').addEventListener('submit', function (e) {
     e.preventDefault();
     var v = $('ai-sleutel').value.trim();
     if (!v) return;
-    zetSleutel(v);
+    zetSleutel(v); sleutelNaarCloud(v);
     $('ai-status').textContent = 'Testen...';
     claude().then(function (client) {
       return client.models.retrieve('claude-opus-5-5');
@@ -747,7 +926,9 @@
   function tijdTekst(t) {
     return new Date(t).toLocaleString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   }
-  function toonVerzoeken() {
+  function toonVerzoeken(zonderSync) {
+    // eerst direct de lijst tonen, daarna bijwerken met wat er in OneDrive staat
+    if (!zonderSync && cloud.aan) sync().then(function () { if ($('verzoeken').open) toonVerzoeken(true); });
     var klaar = bewaarTimer ? bewaarNu() : Promise.resolve();
     klaar.then(dbAlles).then(function (lijst) {
       lijst = lijst.filter(function (v) { return v.id === staat.id || !isLeeg(v); })
@@ -772,7 +953,7 @@
         }
         acties.appendChild(knop('Verwijderen', 'klein gevaar', null, function () {
           if (!confirm('"' + (v.meta.titel || 'Wijzigingsverzoek') + '" definitief verwijderen?')) return;
-          dbVerwijder(v.id).then(function () {
+          verwijderVerzoek(v.id).then(function () {
             if (v.id === staat.id) { staat = leegStaat(staat); vulMeta(); render(); bewaarNu(); }
             toonVerzoeken();
           });
@@ -794,6 +975,18 @@
     if (opgeslagen && opgeslagen.versie === 1 && isLeeg(staat)) {
       staat = opgeslagen; vulMeta(); render();
       $('status').textContent = 'Opgeslagen';
+      cloud.eersteSync = false;
     }
+  }).then(startCloud);
+  $('btn-cloud').addEventListener('click', function () {
+    if (cloud.status === 'uit' || cloud.status === 'login') koppel(); else if (cloud.aan) sync();
+  });
+  $('cloud-koppel').addEventListener('click', koppel);
+  $('cloud-afmelden').addEventListener('click', function () {
+    if (!cloud.aan) { koppel(); return; }
+    if (!confirm('OneDrive ontkoppelen op deze computer? Je verzoeken blijven in OneDrive en in deze browser staan.')) return;
+    (bewaarTimer ? bewaarNu() : Promise.resolve()).then(function () { return OneDrive.logout(); }).then(function () {
+      cloud.aan = false; cloud.naam = ''; zetCloud('uit'); meld('OneDrive ontkoppeld op deze computer');
+    }).catch(cloudFout);
   });
 })();

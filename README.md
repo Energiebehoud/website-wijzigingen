@@ -37,3 +37,14 @@ omdat de browser `sjabloon.html` dan niet mag ophalen.
 ## Publiceren
 
 Push naar `main`; GitHub Pages publiceert automatisch.
+
+## OneDrive
+
+Met **Koppel OneDrive** logt de gebruiker in met Microsoft (MSAL, redirect-flow) en staat elk
+verzoek als `verzoek-<id>.json` in de OneDrive-map `Wijzigingsverzoeken website`, plus
+`instellingen.json` met de API-sleutel. De browseropslag blijft de werkkopie; bij opstarten, bij
+terugkeer naar het tabblad en bij **Mijn verzoeken** wordt bijgewerkt (nieuwste versie wint,
+verwijderingen gaan mee). Code: `onedrive.js` (login en Graph) en het OneDrive-blok in `app.js`.
+
+De app gebruikt de Entra-app-registratie van de projectfoto's-app. Daarin moet
+`https://energiebehoud.github.io/website-wijzigingen/` als SPA-redirect-URI staan.
