@@ -1,0 +1,116 @@
+:root {
+  --tekst: #1d2420;
+  --zacht: #5b665f;
+  --lijn: #d9dfdb;
+  --vlak: #f4f6f5;
+  --achter: #eef1ef;
+  --merk: #2CA74B;
+  --merk-donker: #1f7f38;
+  --marker: #e0262b;
+  --oud-vlak: #fbf0f0;
+  --nieuw-vlak: #eef6ef;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--achter); color: var(--tekst);
+  font: 15px/1.45 "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+}
+button, input, select, textarea { font: inherit; color: inherit; }
+button {
+  cursor: pointer; border: 1px solid var(--lijn); background: #fff; border-radius: 6px; padding: 6px 12px;
+}
+button:hover { border-color: var(--merk); }
+button.primair { background: var(--merk-donker); border-color: var(--merk-donker); color: #fff; font-weight: 600; }
+button.primair:hover { background: #18692e; }
+button.klein { padding: 3px 8px; font-size: 13px; }
+button.gevaar:hover { border-color: var(--marker); color: var(--marker); }
+button.aan { background: var(--marker); border-color: var(--marker); color: #fff; }
+
+.balk {
+  position: sticky; top: 0; z-index: 20; background: #fff; border-bottom: 3px solid var(--merk);
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; padding: 10px 16px;
+}
+.merk { font-weight: 700; font-size: 18px; }
+.merk span { color: var(--merk-donker); }
+.acties { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.status { color: var(--zacht); font-size: 13px; }
+
+main { max-width: 1400px; margin: 0 auto; padding: 20px 16px 80px; }
+.kaartblok { background: #fff; border: 1px solid var(--lijn); border-radius: 10px; padding: 16px; margin-bottom: 20px; }
+.gegevens { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.veld { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.veld.breed { grid-column: 1 / -1; }
+.veld label, .kaart label { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--zacht); font-weight: 600; }
+input, select, textarea {
+  width: 100%; border: 1px solid var(--lijn); border-radius: 6px; padding: 7px 9px; background: #fff;
+}
+input:focus, select:focus, textarea:focus { outline: 2px solid var(--merk); outline-offset: -1px; border-color: var(--merk); }
+textarea { resize: vertical; }
+
+.pagina { background: #fff; border: 1px solid var(--lijn); border-radius: 10px; margin-bottom: 20px; overflow: hidden; }
+.pagina-kop { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 12px 16px; background: var(--vlak); border-bottom: 1px solid var(--lijn); }
+.pagina-kop .naam { flex: 1 1 200px; font-weight: 600; }
+.pagina-kop .url { flex: 2 1 260px; }
+.pagina-body { display: grid; grid-template-columns: minmax(0, 3fr) minmax(320px, 2fr); gap: 16px; padding: 16px; align-items: start; }
+.shot-kolom { position: sticky; top: 70px; }
+.shot { position: relative; margin: 14px 0 0 14px; border: 1px solid var(--lijn); border-radius: 6px; user-select: none; }
+.shot img { display: block; width: 100%; height: auto; pointer-events: none; border-radius: 5px; }
+.laag { position: absolute; inset: 0; cursor: crosshair; touch-action: none; }
+.laag.doel { outline: 3px dashed var(--marker); outline-offset: -3px; }
+.hint { font-size: 13px; color: var(--zacht); margin: 6px 0 0; }
+.mark, .concept { position: absolute; border: 3px solid var(--marker); border-radius: 4px; box-shadow: 0 0 0 2px rgba(255,255,255,.75); }
+.concept { border-style: dashed; pointer-events: none; }
+.mark { cursor: move; }
+.mark.actief { background: rgba(224, 38, 43, .12); }
+.mark .nr-badge {
+  position: absolute; top: -14px; left: -14px; width: 26px; height: 26px; border-radius: 50%;
+  background: var(--marker); color: #fff; font-weight: 700; font-size: 14px;
+  display: flex; align-items: center; justify-content: center; border: 2px solid #fff;
+}
+.mark .greep {
+  position: absolute; right: -7px; bottom: -7px; width: 14px; height: 14px; border-radius: 3px;
+  background: #fff; border: 2px solid var(--marker); cursor: nwse-resize;
+}
+
+.kaarten { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.kaart { border: 1px solid var(--lijn); border-radius: 8px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; transition: box-shadow .2s; }
+.kaart.actief { box-shadow: 0 0 0 3px rgba(224, 38, 43, .35); border-color: var(--marker); }
+.kaart-kop { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.kaart-kop select { width: auto; flex: 0 1 auto; }
+.kaart-kop .waar { flex: 1 1 140px; }
+.nr {
+  flex: none; width: 28px; height: 28px; border-radius: 50%; background: var(--marker); color: #fff;
+  font-weight: 700; display: flex; align-items: center; justify-content: center;
+}
+.nr.zonder { background: var(--zacht); }
+.kaart label { display: flex; flex-direction: column; gap: 3px; }
+.kaart .huidig { background: var(--oud-vlak); }
+.kaart .nieuw { background: var(--nieuw-vlak); }
+.leeg-kaarten { color: var(--zacht); font-size: 14px; margin: 0; }
+
+.dropzone {
+  display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; cursor: pointer;
+  border: 2px dashed var(--merk); border-radius: 10px; background: #fff; padding: 36px 16px; margin-bottom: 20px; color: var(--zacht);
+}
+.dropzone strong { color: var(--tekst); font-size: 17px; }
+.dropzone:focus, .dropzone.over, body.slepen .dropzone { background: var(--nieuw-vlak); outline: none; }
+
+.uitleg { color: var(--zacht); font-size: 14px; }
+.uitleg h2 { font-size: 16px; color: var(--tekst); margin: 0 0 6px; }
+.uitleg ol { margin: 0 0 8px; padding-left: 20px; }
+kbd { border: 1px solid var(--lijn); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; background: #fff; font-size: 12px; }
+
+.melding {
+  position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(20px); opacity: 0;
+  background: var(--tekst); color: #fff; padding: 10px 16px; border-radius: 8px; transition: all .2s; pointer-events: none; z-index: 30; max-width: calc(100% - 32px);
+}
+.melding.zichtbaar { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+@media (max-width: 900px) {
+  .gegevens { grid-template-columns: 1fr 1fr; }
+  .pagina-body { grid-template-columns: 1fr; }
+  .shot-kolom { position: static; }
+}
+@media (max-width: 520px) {
+  .gegevens { grid-template-columns: 1fr; }
+}

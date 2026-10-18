@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wijzigingsverzoek website</title>
+<style>
+  :root {
+    --tekst: #1d2420;
+    --zacht: #5b665f;
+    --lijn: #d9dfdb;
+    --vlak: #f4f6f5;
+    --merk: #2f6b3a;
+    --oud: #8a2f2f;
+    --oud-vlak: #fbf0f0;
+    --nieuw-vlak: #eef6ef;
+    --marker: #e0262b;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: #fff; color: var(--tekst);
+    font: 15px/1.5 "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+  }
+  main { max-width: 980px; margin: 0 auto; padding: 32px 16px 64px; }
+  header { border-bottom: 3px solid var(--merk); padding-bottom: 16px; margin-bottom: 24px; }
+  header h1 { margin: 0 0 4px; font-size: 26px; }
+  .meta { color: var(--zacht); font-size: 14px; display: flex; flex-wrap: wrap; gap: 4px 20px; }
+  .intro { margin: 16px 0 0; white-space: pre-wrap; }
+  .overzicht { background: var(--vlak); border-radius: 8px; padding: 12px 16px; margin-bottom: 28px; font-size: 14px; }
+  .overzicht ol { margin: 6px 0 0; padding-left: 22px; }
+  section.pagina { margin-bottom: 40px; }
+  section.pagina > h2 { font-size: 20px; margin: 0 0 2px; }
+  .url { font-size: 13px; color: var(--zacht); word-break: break-all; }
+  .url a { color: var(--merk); }
+  .shot { position: relative; margin: 26px 0 16px 14px; border: 1px solid var(--lijn); border-radius: 6px; }
+  .shot img { display: block; width: 100%; height: auto; border-radius: 5px; }
+  .mark { position: absolute; border: 3px solid var(--marker); border-radius: 4px; box-shadow: 0 0 0 2px rgba(255,255,255,.7); }
+  .mark span {
+    position: absolute; top: -14px; left: -14px; width: 26px; height: 26px; border-radius: 50%;
+    background: var(--marker); color: #fff; font-weight: 700; font-size: 14px;
+    display: flex; align-items: center; justify-content: center; border: 2px solid #fff;
+  }
+  .item { border: 1px solid var(--lijn); border-radius: 8px; margin-bottom: 14px; overflow: hidden; break-inside: avoid; }
+  .item-kop { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: var(--vlak); }
+  .nr {
+    flex: none; width: 28px; height: 28px; border-radius: 50%; background: var(--marker); color: #fff;
+    font-weight: 700; display: flex; align-items: center; justify-content: center;
+  }
+  .soort { font-weight: 600; }
+  .waar { color: var(--zacht); font-size: 14px; }
+  .verwerkt { margin-left: auto; font-size: 13px; color: var(--zacht); display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .teksten { display: grid; grid-template-columns: 1fr 1fr; }
+  .blok { padding: 12px 14px; min-width: 0; }
+  .blok + .blok { border-left: 1px solid var(--lijn); }
+  .blok h3 { margin: 0 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--zacht); display: flex; justify-content: space-between; align-items: center; }
+  .blok.oud { background: var(--oud-vlak); }
+  .blok.oud .txt { color: var(--oud); text-decoration: line-through; text-decoration-thickness: 1px; }
+  .blok.nieuw { background: var(--nieuw-vlak); }
+  .txt { white-space: pre-wrap; word-wrap: break-word; }
+  .leeg { color: var(--zacht); font-style: italic; text-decoration: none !important; }
+  .toel { padding: 10px 14px; border-top: 1px solid var(--lijn); font-size: 14px; white-space: pre-wrap; }
+  .toel b { color: var(--zacht); font-weight: 600; }
+  button.kopieer {
+    font: inherit; font-size: 12px; text-transform: none; letter-spacing: 0; cursor: pointer;
+    border: 1px solid var(--merk); color: var(--merk); background: #fff; border-radius: 4px; padding: 2px 8px;
+  }
+  footer { margin-top: 40px; color: var(--zacht); font-size: 13px; border-top: 1px solid var(--lijn); padding-top: 12px; }
+  @media (max-width: 640px) {
+    .teksten { grid-template-columns: 1fr; }
+    .blok + .blok { border-left: 0; border-top: 1px solid var(--lijn); }
+    .verwerkt { display: none; }
+  }
+  @media print {
+    main { padding: 0; max-width: none; }
+    button.kopieer { display: none; }
+    section.pagina { break-before: page; }
+    section.pagina:first-of-type { break-before: auto; }
+    .shot { break-inside: avoid; }
+    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+</head>
+<body>
+<main id="app"></main>
+<script id="data" type="application/json">/*DATA*/</script>
+<script>
+(function () {
+  var d = JSON.parse(document.getElementById('data').textContent);
+  var app = document.getElementById('app');
+  document.title = d.titel || 'Wijzigingsverzoek website';
+
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;
+    return e;
+  }
+  function opslagSleutel(nr) { return 'wv|' + (d.titel || '') + '|' + (d.datum || '') + '|' + nr; }
+  function lees(k) { try { return localStorage.getItem(k) === '1'; } catch (e) { return false; } }
+  function schrijf(k, v) { try { localStorage.setItem(k, v ? '1' : '0'); } catch (e) {} }
+
+  function kopieer(tekst, knop) {
+    function klaar() { var o = knop.textContent; knop.textContent = 'Gekopieerd'; setTimeout(function () { knop.textContent = o; }, 1500); }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(tekst).then(klaar, function () { reserve(); });
+    } else { reserve(); }
+    function reserve() {
+      var t = document.createElement('textarea'); t.value = tekst; document.body.appendChild(t); t.select();
+      try { document.execCommand('copy'); klaar(); } catch (e) {}
+      document.body.removeChild(t);
+    }
+  }
+
+  // Kop
+  var kop = el('header');
+  kop.appendChild(el('h1', null, d.titel || 'Wijzigingsverzoek website'));
+  var meta = el('div', 'meta');
+  if (d.website) meta.appendChild(el('span', null, 'Website: ' + d.website));
+  if (d.datum) meta.appendChild(el('span', null, 'Datum: ' + d.datum));
+  if (d.afzender) meta.appendChild(el('span', null, 'Van: ' + d.afzender));
+  if (d.ontvanger) meta.appendChild(el('span', null, 'Aan: ' + d.ontvanger));
+  kop.appendChild(meta);
+  if (d.intro) kop.appendChild(el('p', 'intro', d.intro));
+  app.appendChild(kop);
+
+  // Overzicht
+  var paginas = d.paginas || [];
+  var totaal = 0;
+  paginas.forEach(function (p) { totaal += (p.wijzigingen || []).length; });
+  var ov = el('div', 'overzicht');
+  ov.appendChild(el('strong', null, totaal + (totaal === 1 ? ' wijziging' : ' wijzigingen') + ' op ' + paginas.length + (paginas.length === 1 ? ' pagina' : " pagina's")));
+  var ol = el('ol');
+  paginas.forEach(function (p) {
+    var nrs = (p.wijzigingen || []).map(function (w) { return w.nr; }).join(', ');
+    ol.appendChild(el('li', null, (p.pagina || 'Pagina') + (nrs ? ' (nr. ' + nrs + ')' : '')));
+  });
+  ov.appendChild(ol);
+  app.appendChild(ov);
+
+  // Pagina's
+  paginas.forEach(function (p) {
+    var s = el('section', 'pagina');
+    s.appendChild(el('h2', null, p.pagina || 'Pagina'));
+    if (p.url) {
+      var u = el('div', 'url'); var a = el('a', null, p.url); a.href = p.url; a.target = '_blank'; a.rel = 'noopener';
+      u.appendChild(a); s.appendChild(u);
+    }
+    (p.screenshots || []).forEach(function (sh) {
+      var wrap = el('div', 'shot');
+      var img = el('img'); img.src = sh.bron; img.alt = 'Screenshot ' + (p.pagina || ''); wrap.appendChild(img);
+      (sh.markeringen || []).forEach(function (m) {
+        var mk = el('div', 'mark');
+        mk.style.left = m.x + '%'; mk.style.top = m.y + '%'; mk.style.width = m.b + '%'; mk.style.height = m.h + '%';
+        mk.appendChild(el('span', null, String(m.nr)));
+        wrap.appendChild(mk);
+      });
+      s.appendChild(wrap);
+    });
+
+    (p.wijzigingen || []).forEach(function (w) {
+      var it = el('div', 'item');
+      var ik = el('div', 'item-kop');
+      ik.appendChild(el('div', 'nr', String(w.nr)));
+      var kopTekst = el('div');
+      kopTekst.appendChild(el('div', 'soort', w.soort || 'Wijziging'));
+      if (w.waar) kopTekst.appendChild(el('div', 'waar', w.waar));
+      ik.appendChild(kopTekst);
+      var lab = el('label', 'verwerkt'); var cb = el('input'); cb.type = 'checkbox';
+      var k = opslagSleutel(w.nr); cb.checked = lees(k); cb.onchange = function () { schrijf(k, cb.checked); };
+      lab.appendChild(cb); lab.appendChild(document.createTextNode('Verwerkt'));
+      ik.appendChild(lab);
+      it.appendChild(ik);
+
+      var t = el('div', 'teksten');
+      var oud = el('div', 'blok oud'); oud.appendChild(el('h3', null, 'Huidige tekst'));
+      oud.appendChild(w.huidig ? el('div', 'txt', w.huidig) : el('div', 'txt leeg', '(nieuw toe te voegen)'));
+      var nw = el('div', 'blok nieuw'); var h = el('h3', null, 'Nieuwe tekst');
+      if (w.nieuw) {
+        var knop = el('button', 'kopieer', 'Kopieer'); knop.type = 'button';
+        knop.onclick = function () { kopieer(w.nieuw, knop); }; h.appendChild(knop);
+      }
+      nw.appendChild(h);
+      nw.appendChild(w.nieuw ? el('div', 'txt', w.nieuw) : el('div', 'txt leeg', '(verwijderen)'));
+      t.appendChild(oud); t.appendChild(nw); it.appendChild(t);
+
+      if (w.toelichting) {
+        var to = el('div', 'toel'); to.appendChild(el('b', null, 'Toelichting: '));
+        to.appendChild(document.createTextNode(w.toelichting)); it.appendChild(to);
+      }
+      s.appendChild(it);
+    });
+    app.appendChild(s);
+  });
+
+  var f = el('footer', null, 'Rode nummers in de screenshots verwijzen naar de genummerde wijzigingen. Gebruik de knop "Kopieer" om de nieuwe tekst exact over te nemen.' + (d.afzender ? ' Vragen? Neem contact op met ' + d.afzender + '.' : ''));
+  app.appendChild(f);
+})();
+</script>
+</body>
+</html>
