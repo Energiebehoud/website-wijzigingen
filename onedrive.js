@@ -39,7 +39,24 @@
     return klaar;
   }
   function account() { return msal ? (msal.getActiveAccount() || msal.getAllAccounts()[0] || null) : null; }
-  function login() { return init().then(function () { return msal.loginRedirect({ scopes: SCOPES, prompt: 'select_account' }); }); }
+  // Een eerder afgebroken login (terug met de knop Vorige) laat een vlag achter waardoor MSAL
+  // elke nieuwe poging weigert met interaction_in_progress. Die vlag ruimen we op en we proberen het opnieuw.
+  function wisInteractie() {
+    [sessionStorage, localStorage].forEach(function (opslag) {
+      try {
+        Object.keys(opslag).forEach(function (k) { if (k.indexOf('interaction.status') >= 0) opslag.removeItem(k); });
+      } catch (e) { /* opslag geblokkeerd */ }
+    });
+  }
+  function login() {
+    function poging() { return msal.loginRedirect({ scopes: SCOPES, prompt: 'select_account' }); }
+    return init().catch(function () { wisInteractie(); klaar = null; return init(); }).then(function () {
+      return poging().catch(function (e) {
+        if (e && e.errorCode === 'interaction_in_progress') { wisInteractie(); return poging(); }
+        throw e;
+      });
+    });
+  }
   // Alleen op deze computer afmelden (lokale tokens wissen), niet overal bij Microsoft.
   function logout() {
     return init().then(function () {

@@ -161,7 +161,16 @@
     console.warn('OneDrive', e);
     if (e && (e.code === 'OPNIEUW_INLOGGEN' || e.status === 401)) { zetCloud('login'); return; }
     if (e && e.code === 'NIET_AANGEMELD') { cloud.aan = false; zetCloud('uit'); return; }
-    zetCloud('fout', 'OneDrive niet bereikbaar' + (e && e.status ? ' (' + e.status + ')' : '') + '. Je werk staat veilig in deze browser en wordt later bijgewerkt.');
+    zetCloud('fout', 'OneDrive niet bereikbaar' + (e && e.status ? ' (' + e.status + ')' : '') + '. ' + uitleg(e) + 'Je werk staat veilig in deze browser en wordt later bijgewerkt.');
+  }
+  // Leesbare reden bij een fout van Microsoft, zodat je ziet wat er mis is in plaats van alleen "fout".
+  function uitleg(e) {
+    var t = String((e && (e.errorMessage || e.message)) || '') + ' ' + String((e && e.errorCode) || '');
+    if (/AADSTS50011|redirect_uri|redirect uri/i.test(t)) return 'Het adres van deze app staat niet als redirect-URI in de Azure-app-registratie. ';
+    if (/AADSTS65001|consent/i.test(t)) return 'De rechten voor OneDrive zijn nog niet goedgekeurd in Azure. ';
+    if (e && e.status === 403) return 'Microsoft geeft geen toegang tot OneDrive (403). Controleer de API-rechten (Files.ReadWrite.All). ';
+    var kort = t.trim().split(/\r?\n/)[0];
+    return kort ? 'Melding: ' + kort.slice(0, 200) + '. ' : '';
   }
 
   function planPush(s) {
@@ -274,12 +283,18 @@
       if (!a) { zetCloud('uit'); return; }
       cloud.aan = true; cloud.naam = a.name || a.username || '';
       return sync();
-    }).catch(function (e) { console.warn('OneDrive', e); zetCloud('uit'); });
+    }).catch(function (e) {
+      // terugkeer van Microsoft met een foutmelding: laten zien in plaats van stil op "uit" zetten
+      console.warn('OneDrive', e);
+      if (/[?#&](error|code)=/.test(location.search + location.hash) || (e && /AADSTS/.test(e.errorMessage || e.message || ''))) {
+        cloudFout(e); meld('Inloggen bij Microsoft lukte niet. ' + uitleg(e));
+      } else zetCloud('uit');
+    });
   }
   function koppel() {
     zetCloud('laden');
     (bewaarTimer ? bewaarNu() : Promise.resolve()).then(function () { return OneDrive.login(); })
-      .catch(function (e) { cloudFout(e); meld('Inloggen lukte niet'); });
+      .catch(function (e) { cloudFout(e); meld('Inloggen lukte niet. ' + uitleg(e)); });
   }
   window.addEventListener('focus', function () { if (cloud.aan && Date.now() - laatsteSync > 20000) sync(); });
   var bewaarTimer = null;
