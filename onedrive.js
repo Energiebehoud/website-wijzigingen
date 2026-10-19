@@ -137,8 +137,32 @@
     });
   }
 
+  // Zet een bestand (PDF) in de map en maakt een leeslink die iedereen zonder inloggen opent.
+  // Bij hetzelfde bestand opnieuw delen blijft de link gelijk; alleen de inhoud wordt vervangen.
+  function deel(naam, blob) {
+    function put() {
+      return graph(pad(naam) + ':/content', { method: 'PUT', headers: { 'Content-Type': blob.type || 'application/octet-stream' }, body: blob });
+    }
+    return put().then(function (r) {
+      return r.status === 404 ? maakMap().then(put) : r;
+    }).then(function (r) {
+      if (!r.ok) throw fout('GRAPH', r.status);
+      return r.json();
+    }).then(function (item) {
+      return graph('/me/drive/items/' + item.id + '/createLink', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'view', scope: 'anonymous' })
+      });
+    }).then(function (r) {
+      // 400/403: de organisatie staat links voor "iedereen" niet toe
+      if (r.status === 400 || r.status === 403) throw fout('GEEN_OPENBARE_LINK', r.status);
+      if (!r.ok) throw fout('GRAPH', r.status);
+      return r.json();
+    }).then(function (j) { return j.link.webUrl; });
+  }
+
   window.OneDrive = {
     init: init, account: account, login: login, logout: logout,
-    lijst: lijst, lees: lees, schrijf: schrijf, verwijder: verwijder, map: MAP
+    lijst: lijst, lees: lees, schrijf: schrijf, verwijder: verwijder, deel: deel, map: MAP
   };
 })();

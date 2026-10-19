@@ -19,6 +19,19 @@ Alle gegevens blijven in de browser (IndexedDB): elk verzoek wordt apart en auto
 Een gedownload verzoek kan via **Openen** weer worden bewerkt, ook verzoeken die de
 Claude-skill heeft gemaakt.
 
+## PDF en deellink
+
+Niet elke webbouwer kan een HTML-bijlage openen. Daarom zijn er nog twee manieren om te versturen:
+
+- **Download PDF**: de app maakt in de browser een PDF (jsPDF via jsDelivr), met echte, kopieerbare tekst
+  en de genummerde kaders in de screenshots. Hele-pagina-screenshots lopen door over meerdere pagina's.
+- **Deel link**: zet die PDF in de OneDrive-map en maakt een leeslink voor iedereen met de link
+  (`createLink`, scope `anonymous`). De bestandsnaam wordt bij het verzoek onthouden, dus opnieuw delen
+  vervangt de PDF en houdt dezelfde link. Werkt alleen als delen met "Iedereen" aan staat voor OneDrive
+  in het SharePoint-beheercentrum.
+
+Code: het blok "PDF" en "deellink" in `app.js`, en `deel()` in `onedrive.js`.
+
 ## Herschrijven met Claude
 
 Bij elke nieuwe tekst staat een knop **Herschrijven**. Die stuurt de tekst (met pagina, plek,

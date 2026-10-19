@@ -18,7 +18,9 @@
     <button id="btn-nieuw" type="button">Nieuw</button>
     <button id="btn-open" type="button">Openen</button>
     <button id="btn-bekijk" type="button">Bekijken</button>
-    <button id="btn-download" type="button" class="primair">Download voor webbouwer</button>
+    <button id="btn-download" type="button" title="Download als HTML-bestand met kopieerknoppen (ook weer te openen met Openen)">Download HTML</button>
+    <button id="btn-pdf" type="button">Download PDF</button>
+    <button id="btn-deel" type="button" class="primair" title="Zet de PDF in je OneDrive en maak een link die de webbouwer zonder inloggen opent">Deel link</button>
   </div>
   <input id="bestand-open" type="file" accept=".html,.htm" hidden>
 </header>
@@ -66,7 +68,7 @@
       <li>Vul het adres van de pagina in en klik op <b>Screenshot maken</b>. Of maak zelf een screenshot (Windows: <kbd>Win</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd>) en plak het hier met <kbd>Ctrl</kbd>+<kbd>V</kbd>.</li>
       <li>Sleep op het screenshot een kader over de tekst die anders moet. Elk kader krijgt een nummer.</li>
       <li>Vul per nummer de huidige en de nieuwe tekst in. Kaders kun je verslepen en aan de hoek groter of kleiner maken.</li>
-      <li>Klik op <b>Download voor webbouwer</b> en stuur dat bestand mee in de mail. Het opent in elke browser en is als PDF te printen.</li>
+      <li>Klik op <b>Deel link</b> en zet de link in je mail aan de webbouwer. Hij opent de wijzigingen dan gewoon online als PDF, zonder in te loggen. Liever een bijlage? Gebruik <b>Download PDF</b> (of <b>Download HTML</b>, met kopieerknoppen).</li>
     </ol>
     <p>Alles wordt bij elke wijziging automatisch opgeslagen. Onder <b>Mijn verzoeken</b> staan al je verzoeken; open er een om verder te gaan. <b>Nieuw</b> begint een nieuw verzoek zonder het vorige te wissen.</p>
     <p>Met <b>Koppel OneDrive</b> komen je verzoeken (en je AI-sleutel) in je OneDrive, map "Wijzigingsverzoeken website". Op elke computer waar je inlogt staan ze dan klaar.</p>
@@ -101,6 +103,23 @@
     </div>
     <p id="ai-status" class="hint" role="status"></p>
   </form>
+</dialog>
+
+<dialog id="deel" class="verzoeken" aria-labelledby="deel-kop">
+  <div class="verzoeken-kop">
+    <h2 id="deel-kop">Link voor de webbouwer</h2>
+    <button id="deel-sluit" type="button" class="klein">Sluiten</button>
+  </div>
+  <div class="ai-form">
+    <p>Zet deze link in je mail. De webbouwer ziet de wijzigingen als PDF in zijn browser, zonder in te loggen.</p>
+    <label for="deel-link">Link</label>
+    <input id="deel-link" type="text" readonly spellcheck="false">
+    <div class="ai-acties">
+      <button id="deel-kopieer" type="button" class="primair">Kopieer link</button>
+      <button id="deel-open" type="button">Bekijk</button>
+    </div>
+    <p class="hint">De PDF staat in je OneDrive, map "Wijzigingsverzoeken website". Pas je het verzoek later aan? Klik dan opnieuw op <b>Deel link</b>: de PDF wordt bijgewerkt en de link blijft hetzelfde.</p>
+  </div>
 </dialog>
 
 <div id="melding" class="melding" role="status" aria-live="polite"></div>

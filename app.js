@@ -888,9 +888,16 @@
     if (leeg && !confirm(leeg + ' wijziging(en) zijn nog leeg. Toch doorgaan?')) return false;
     return true;
   }
-  function bestandsnaam() {
+  function bestandsnaam(ext) {
     var d = new Date(), z = function (n) { return (n < 10 ? '0' : '') + n; };
-    return 'wijzigingsverzoek-website-' + d.getFullYear() + '-' + z(d.getMonth() + 1) + '-' + z(d.getDate()) + '.html';
+    return 'wijzigingsverzoek-website-' + d.getFullYear() + '-' + z(d.getMonth() + 1) + '-' + z(d.getDate()) + '.' + (ext || 'html');
+  }
+  function downloadBlob(blob, naam) {
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = naam;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
   }
 
   $('btn-bekijk').addEventListener('click', function () {
@@ -904,14 +911,275 @@
   $('btn-download').addEventListener('click', function () {
     if (!controleer()) return;
     bouwHtml().then(function (html) {
-      var a = document.createElement('a');
-      a.href = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
-      a.download = bestandsnaam();
-      document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
+      downloadBlob(new Blob([html], { type: 'text/html' }), bestandsnaam('html'));
       meld('Gedownload. Voeg het bestand toe aan je mail aan de webbouwer.');
     }).catch(function (e) { meld(e.message); });
   });
+
+  // ---------- PDF: voor webbouwers die een HTML-bijlage niet kunnen openen ----------
+  // Echte tekst (selecteerbaar en kopieerbaar), screenshots met de rode kaders erin getekend.
+  var JSPDF_URL = 'https://cdn.jsdelivr.net/npm/jspdf@2.5.2/+esm';
+  var M = 15, INHOUD = 180, BOVEN = 16, ONDER = 282, LH = 4.6; // A4 in mm; LH = regelhoogte bij 10 pt
+  var KLEUR = { tekst: [29, 36, 32], zacht: [91, 102, 95], lijn: [217, 223, 219], vlak: [244, 246, 245], merk: [47, 107, 58],
+    oud: [138, 47, 47], oudVlak: [251, 240, 240], nieuwVlak: [238, 246, 239], marker: [224, 38, 43] };
+  var jspdfBelofte = null;
+  function jspdf() {
+    if (!jspdfBelofte) {
+      jspdfBelofte = import(JSPDF_URL).then(function (m) { return m.jsPDF || (m.default && m.default.jsPDF) || m.default; })
+        .catch(function (e) { jspdfBelofte = null; throw e; });
+    }
+    return jspdfBelofte;
+  }
+  // De standaardletters van een PDF kennen alleen West-Europese tekens: de rest omzetten of weglaten.
+  var WINANSI = '€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ';
+  var VERVANG = { '→': '->', '←': '<-', '≥': '>=', '≤': '<=', '✓': 'v', '✔': 'v', ' ': ' ' };
+  function pdfTekst(s) {
+    return String(s || '').replace(/\r\n?/g, '\n').replace(/\t/g, '    ').replace(/[^\n\x20-\xff]/g, function (c) {
+      if (WINANSI.indexOf(c) >= 0) return c;
+      return VERVANG[c] != null ? VERVANG[c] : '';
+    });
+  }
+  function kleur(doc, soort, k) {
+    if (soort === 'tekst') doc.setTextColor(k[0], k[1], k[2]);
+    else if (soort === 'vul') doc.setFillColor(k[0], k[1], k[2]);
+    else doc.setDrawColor(k[0], k[1], k[2]);
+  }
+  function letter(doc, stijl, grootte) { doc.setFont('helvetica', stijl); doc.setFontSize(grootte); }
+  function nieuweBlz(doc, pos) { doc.addPage(); pos.y = BOVEN; }
+
+  function laadBeeld(bron) {
+    return new Promise(function (res, rej) {
+      var img = new Image();
+      img.onload = function () { res(img); };
+      img.onerror = function () { rej(new Error('Screenshot niet te laden')); };
+      img.src = bron;
+    });
+  }
+  // Screenshot met de genummerde kaders erin getekend, zoals in de HTML-weergave.
+  function metKaders(img, markeringen) {
+    var c = document.createElement('canvas');
+    c.width = img.naturalWidth; c.height = img.naturalHeight;
+    var ctx = c.getContext('2d');
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+    ctx.drawImage(img, 0, 0);
+    var s = c.width / (c.width < 1000 ? 450 : 900); // mobiel wordt smaller afgedrukt, dus relatief dikkere lijnen
+    markeringen.forEach(function (m) {
+      var x = m.x / 100 * c.width, y = m.y / 100 * c.height, b = m.b / 100 * c.width, h = m.h / 100 * c.height;
+      ctx.lineWidth = 7 * s; ctx.strokeStyle = 'rgba(255,255,255,.75)'; ctx.strokeRect(x, y, b, h);
+      ctx.lineWidth = 3 * s; ctx.strokeStyle = '#e0262b'; ctx.strokeRect(x, y, b, h);
+      var r = 13 * s, cx = Math.max(x, r + 2 * s), cy = Math.max(y, r + 2 * s);
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.fillStyle = '#e0262b'; ctx.fill();
+      ctx.lineWidth = 2 * s; ctx.strokeStyle = '#fff'; ctx.stroke();
+      ctx.fillStyle = '#fff'; ctx.font = 'bold ' + Math.round(14 * s) + 'px Arial, sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(String(m.nr), cx, cy + s);
+    });
+    return c;
+  }
+  // Lange (hele-pagina-)screenshots worden over meerdere PDF-pagina's verdeeld.
+  function tekenScreenshot(doc, pos, c) {
+    var breedte = c.width < 1000 ? 90 : INHOUD;
+    var schaal = breedte / c.width, x = M + (INHOUD - breedte) / 2, boven = 0;
+    while (boven < c.height) {
+      var ruimte = ONDER - pos.y, rest = (c.height - boven) * schaal;
+      if (rest > ruimte && ruimte < 50) { nieuweBlz(doc, pos); ruimte = ONDER - pos.y; }
+      var stukPx = Math.min(c.height - boven, Math.floor(ruimte / schaal));
+      var stuk = document.createElement('canvas');
+      stuk.width = c.width; stuk.height = stukPx;
+      stuk.getContext('2d').drawImage(c, 0, boven, c.width, stukPx, 0, 0, c.width, stukPx);
+      var h = stukPx * schaal;
+      doc.addImage(stuk.toDataURL('image/jpeg', 0.85), 'JPEG', x, pos.y, breedte, h);
+      kleur(doc, 'lijn', KLEUR.lijn); doc.setLineWidth(0.2); doc.rect(x, pos.y, breedte, h);
+      pos.y += h; boven += stukPx;
+    }
+    pos.y += 6;
+  }
+  // Eén of twee tekstvakken naast elkaar; lopen ze over de pagina heen, dan gaan ze verder op de volgende.
+  function tekenVakken(doc, pos, vakken) {
+    var breedte = INHOUD / vakken.length;
+    letter(doc, 'normal', 10);
+    vakken.forEach(function (v) { v.regels = doc.splitTextToSize(pdfTekst(v.tekst), breedte - 6); });
+    var n = Math.max.apply(null, vakken.map(function (v) { return v.regels.length; }));
+    var i = 0, eerste = true;
+    while (i < n) {
+      var kop = eerste ? 7 : 2.5;
+      var past = Math.floor((ONDER - pos.y - kop - 2.5) / LH);
+      if (past < 1) { nieuweBlz(doc, pos); continue; }
+      var aantal = Math.min(n - i, past), h = kop + aantal * LH + 2.5;
+      vakken.forEach(function (v, j) {
+        var x = M + j * breedte;
+        kleur(doc, 'vul', v.vlak); doc.rect(x, pos.y, breedte, h, 'F');
+        if (j > 0) { kleur(doc, 'lijn', KLEUR.lijn); doc.setLineWidth(0.2); doc.line(x, pos.y, x, pos.y + h); }
+        if (eerste) { letter(doc, 'bold', 7.5); kleur(doc, 'tekst', KLEUR.zacht); doc.text(v.titel, x + 3, pos.y + 4.8); }
+        letter(doc, v.leeg ? 'italic' : 'normal', 10); kleur(doc, 'tekst', v.leeg ? KLEUR.zacht : v.kleur);
+        v.regels.slice(i, i + aantal).forEach(function (r, ri) { doc.text(r, x + 3, pos.y + kop + (ri + 1) * LH - 1.3); });
+      });
+      pos.y += h; i += aantal; eerste = false;
+    }
+  }
+  function tekenWijziging(doc, pos, w) {
+    letter(doc, 'normal', 9);
+    var waar = w.waar ? doc.splitTextToSize(pdfTekst(w.waar), INHOUD - 18) : [];
+    var kopH = 10 + waar.length * 4;
+    if (pos.y + kopH + 7 + 3 * LH + 3 > ONDER) nieuweBlz(doc, pos); // kop niet los onderaan een pagina
+    kleur(doc, 'vul', KLEUR.vlak); doc.rect(M, pos.y, INHOUD, kopH, 'F');
+    kleur(doc, 'vul', KLEUR.marker); doc.circle(M + 6.5, pos.y + 5, 3.4, 'F');
+    letter(doc, 'bold', 10); kleur(doc, 'tekst', [255, 255, 255]);
+    doc.text(String(w.nr), M + 6.5, pos.y + 6.3, { align: 'center' });
+    letter(doc, 'bold', 10.5); kleur(doc, 'tekst', KLEUR.tekst);
+    doc.text(pdfTekst(w.soort || 'Wijziging'), M + 13, pos.y + 6.4);
+    letter(doc, 'normal', 9); kleur(doc, 'tekst', KLEUR.zacht);
+    waar.forEach(function (r, i) { doc.text(r, M + 13, pos.y + 10.6 + i * 4); });
+    pos.y += kopH;
+    tekenVakken(doc, pos, [
+      { titel: 'HUIDIGE TEKST', tekst: w.huidig || '(nieuw toe te voegen)', leeg: !w.huidig, vlak: KLEUR.oudVlak, kleur: KLEUR.oud },
+      { titel: 'NIEUWE TEKST', tekst: w.nieuw || '(verwijderen)', leeg: !w.nieuw, vlak: KLEUR.nieuwVlak, kleur: KLEUR.tekst }
+    ]);
+    if (w.toelichting) {
+      kleur(doc, 'lijn', KLEUR.lijn); doc.setLineWidth(0.2); doc.line(M, pos.y, M + INHOUD, pos.y);
+      tekenVakken(doc, pos, [{ titel: 'TOELICHTING', tekst: w.toelichting, vlak: [255, 255, 255], kleur: KLEUR.tekst }]);
+    }
+    pos.y += 5;
+  }
+  function tekenRegels(doc, pos, tekst, stijl, grootte, k, regelH) {
+    letter(doc, stijl, grootte); kleur(doc, 'tekst', k);
+    doc.splitTextToSize(pdfTekst(tekst), INHOUD).forEach(function (r) {
+      if (pos.y + regelH > ONDER) nieuweBlz(doc, pos);
+      pos.y += regelH; doc.text(r, M, pos.y);
+    });
+  }
+
+  function maakPdf() {
+    var d = exportData();
+    var titel = d.titel || 'Wijzigingsverzoek website';
+    return jspdf().then(function (JsPDF) {
+      var doc = new JsPDF({ unit: 'mm', format: 'a4', compress: true });
+      doc.setProperties({ title: pdfTekst(titel), author: pdfTekst(d.afzender), subject: 'Wijzigingsverzoek website' });
+      var pos = { y: BOVEN - 4 };
+
+      // kop
+      tekenRegels(doc, pos, titel, 'bold', 20, KLEUR.tekst, 8);
+      var meta = [];
+      if (d.website) meta.push('Website: ' + d.website);
+      if (d.datum) meta.push('Datum: ' + d.datum);
+      if (d.afzender) meta.push('Van: ' + d.afzender);
+      if (d.ontvanger) meta.push('Aan: ' + d.ontvanger);
+      pos.y += 1.5;
+      if (meta.length) tekenRegels(doc, pos, meta.join('     '), 'normal', 9.5, KLEUR.zacht, 4.6);
+      pos.y += 4; kleur(doc, 'lijn', KLEUR.merk); doc.setLineWidth(0.8); doc.line(M, pos.y, M + INHOUD, pos.y); pos.y += 3;
+      if (d.intro) { tekenRegels(doc, pos, d.intro, 'normal', 10, KLEUR.tekst, LH); pos.y += 3; }
+
+      // overzicht
+      var totaal = 0;
+      d.paginas.forEach(function (p) { totaal += p.wijzigingen.length; });
+      letter(doc, 'normal', 9.5);
+      var lijst = [];
+      d.paginas.forEach(function (p, i) {
+        var nrs = p.wijzigingen.map(function (w) { return w.nr; }).join(', ');
+        lijst = lijst.concat(doc.splitTextToSize(pdfTekst((i + 1) + '. ' + p.pagina + (nrs ? ' (nr. ' + nrs + ')' : '')), INHOUD - 10));
+      });
+      var ovH = 10 + lijst.length * 4.4 + 2;
+      pos.y += 3;
+      if (pos.y + ovH > ONDER) nieuweBlz(doc, pos);
+      kleur(doc, 'vul', KLEUR.vlak); doc.roundedRect(M, pos.y, INHOUD, ovH, 2, 2, 'F');
+      letter(doc, 'bold', 10); kleur(doc, 'tekst', KLEUR.tekst);
+      doc.text(totaal + (totaal === 1 ? ' wijziging' : ' wijzigingen') + ' op ' + d.paginas.length + (d.paginas.length === 1 ? ' pagina' : " pagina's"), M + 5, pos.y + 6.5);
+      letter(doc, 'normal', 9.5);
+      lijst.forEach(function (r, i) { doc.text(r, M + 5, pos.y + 11.5 + i * 4.4); });
+      pos.y += ovH + 8;
+
+      // pagina's: elke pagina begint op een nieuw blad, behalve de eerste als die nog past
+      return d.paginas.reduce(function (vorige, p, pi) {
+        return vorige.then(function () {
+          if (pi > 0 || pos.y > ONDER - 80) nieuweBlz(doc, pos);
+          tekenRegels(doc, pos, p.pagina, 'bold', 15, KLEUR.tekst, 6.5);
+          if (p.url) {
+            letter(doc, 'normal', 9); kleur(doc, 'tekst', KLEUR.merk);
+            doc.splitTextToSize(pdfTekst(p.url), INHOUD).forEach(function (r) { pos.y += 4.4; doc.textWithLink(r, M, pos.y, { url: p.url }); });
+          }
+          pos.y += 5;
+          return p.screenshots.filter(function (sh) { return sh.bron; }).reduce(function (v, sh) {
+            return v.then(function () { return laadBeeld(sh.bron); }).then(function (img) {
+              tekenScreenshot(doc, pos, metKaders(img, sh.markeringen || []));
+            });
+          }, Promise.resolve()).then(function () {
+            p.wijzigingen.forEach(function (w) { tekenWijziging(doc, pos, w); });
+          });
+        });
+      }, Promise.resolve()).then(function () {
+        pos.y += 2;
+        tekenRegels(doc, pos, 'De rode nummers in de screenshots verwijzen naar de genummerde wijzigingen.' +
+          (d.afzender ? ' Vragen? Neem contact op met ' + d.afzender + '.' : ''), 'normal', 9, KLEUR.zacht, 4.4);
+        // voettekst met paginanummers
+        var n = doc.getNumberOfPages();
+        for (var i = 1; i <= n; i++) {
+          doc.setPage(i);
+          letter(doc, 'normal', 8); kleur(doc, 'tekst', KLEUR.zacht);
+          doc.text(pdfTekst(titel + (d.datum ? ' · ' + d.datum : '')), M, 290);
+          doc.text('Pagina ' + i + ' van ' + n, M + INHOUD, 290, { align: 'right' });
+        }
+        return doc.output('blob');
+      });
+    });
+  }
+
+  function knopBezig(k, tekst) {
+    var oud = k.textContent; k.disabled = true; k.textContent = tekst;
+    return function () { k.disabled = false; k.textContent = oud; };
+  }
+  $('btn-pdf').addEventListener('click', function (e) {
+    if (!controleer()) return;
+    var klaar = knopBezig(e.currentTarget, 'PDF maken...');
+    maakPdf().then(function (blob) {
+      downloadBlob(blob, bestandsnaam('pdf'));
+      meld('PDF gedownload. Voeg hem toe aan je mail aan de webbouwer.');
+    }).catch(function (er) { console.warn('PDF', er); meld('PDF maken lukte niet: ' + ((er && er.message) || er)); }).then(klaar);
+  });
+
+  // ---------- deellink: PDF in OneDrive, link voor iedereen (alleen lezen) ----------
+  function pdfNaam(s) {
+    var t = (s.meta.titel || 'Wijzigingsverzoek website').replace(/[\\/:*?"<>|#%]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 80);
+    return t + ' (' + s.id + ').pdf';
+  }
+  function toonLink(link) {
+    $('deel-link').value = link;
+    if (!$('deel').open) $('deel').showModal();
+    $('deel-link').select();
+  }
+  $('btn-deel').addEventListener('click', function (e) {
+    if (!controleer()) return;
+    if (!cloud.aan) {
+      if (confirm('Voor een deellink zet de app de PDF in je OneDrive. Die is nog niet gekoppeld. Nu koppelen? Je logt eenmalig in met je Microsoft-account; daarna klik je opnieuw op Deel link.')) koppel();
+      return;
+    }
+    var s = staat, k = e.currentTarget, klaar = knopBezig(k, 'PDF maken...');
+    // eenmaal gedeeld = vaste bestandsnaam, zodat de link gelijk blijft als de titel later verandert
+    var naam = (s.deel && s.deel.naam) || pdfNaam(s);
+    maakPdf().then(function (blob) {
+      k.textContent = 'Uploaden...';
+      return OneDrive.deel(naam, blob);
+    }).then(function (link) {
+      s.deel = { naam: naam, link: link, tijd: Date.now() };
+      if (s === staat) bewaar(); else dbZet('verzoeken', s, s.id);
+      toonLink(link);
+    }).catch(function (er) {
+      console.warn('Delen', er);
+      if (er && er.code === 'GEEN_OPENBARE_LINK') {
+        alert('De PDF staat in je OneDrive (map "' + OneDrive.map + '"), maar Microsoft staat geen link voor "iedereen met de link" toe.\n\n' +
+          'Zet dat aan in het SharePoint-beheercentrum (Beleid > Delen > OneDrive: "Iedereen"). Tot die tijd: gebruik Download PDF.');
+      } else if (er && (er.code || er.status)) { cloudFout(er); meld('Delen lukte niet. ' + uitleg(er)); }
+      else meld('Delen lukte niet: ' + ((er && er.message) || er));
+    }).then(klaar);
+  });
+  $('deel-sluit').addEventListener('click', function () { $('deel').close(); });
+  $('deel-kopieer').addEventListener('click', function () {
+    var v = $('deel-link').value;
+    function klaar() { meld('Link gekopieerd. Plak hem in je mail aan de webbouwer.'); }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(v).then(klaar, function () { $('deel-link').select(); document.execCommand('copy'); klaar(); });
+    } else { $('deel-link').select(); document.execCommand('copy'); klaar(); }
+  });
+  $('deel-open').addEventListener('click', function () { window.open($('deel-link').value, '_blank', 'noopener'); });
 
   // ---------- eerder verzoek openen (ook verzoeken uit de Claude-skill) ----------
   $('btn-open').addEventListener('click', function () { $('bestand-open').click(); });
