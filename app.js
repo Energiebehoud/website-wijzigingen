@@ -246,9 +246,13 @@
         }));
       });
 
-      // API-sleutel van een andere computer overnemen als hier nog geen sleutel is
-      if (instellingen && !leesSleutel()) {
-        taken.push(OneDrive.lees(instellingen).then(function (i) { if (i && i.anthropicKey) zetSleutel(i.anthropicKey); }));
+      // Instellingen (API-sleutel + tooltips) van een andere computer overnemen
+      if (instellingen) {
+        taken.push(OneDrive.lees(instellingen).then(function (i) {
+          if (!i) return;
+          if (i.anthropicKey && !leesSleutel()) zetSleutel(i.anthropicKey);
+          if (i.tooltips && window.Tips && !Object.keys(Tips.leesRuw()).length) Tips.schrijf(i.tooltips);
+        }));
       }
       return Promise.all(taken).then(function () { if (weg.length) return dbZet('staat', [], 'verwijderd'); });
     }).then(function () {
@@ -272,9 +276,15 @@
       return dbZet('staat', weg, 'verwijderd');
     }).then(function () { return dbVerwijder(id); }).then(function () { if (cloud.aan) sync(); });
   }
-  function sleutelNaarCloud(sleutel) {
-    if (cloud.aan) OneDrive.schrijf(INSTELLINGEN, { anthropicKey: sleutel || '' }).catch(cloudFout);
+  function instellingenNaarCloud() {
+    if (!cloud.aan) return;
+    var obj = { anthropicKey: leesSleutel() || '' };
+    var tips = window.Tips ? Tips.leesRuw() : {};
+    if (Object.keys(tips).length) obj.tooltips = tips;
+    OneDrive.schrijf(INSTELLINGEN, obj).catch(cloudFout);
   }
+  function sleutelNaarCloud(sleutel) { instellingenNaarCloud(); }
+  function tooltipsNaarCloud() { instellingenNaarCloud(); }
 
   function startCloud() {
     if (!window.OneDrive) return;
@@ -297,6 +307,7 @@
       .catch(function (e) { cloudFout(e); meld('Inloggen lukte niet. ' + uitleg(e)); });
   }
   window.addEventListener('focus', function () { if (cloud.aan && Date.now() - laatsteSync > 20000) sync(); });
+  window.addEventListener('storage', function (e) { if (e.key === 'ww_tooltips') instellingenNaarCloud(); });
   var bewaarTimer = null;
   function bewaar() {
     staat.gewijzigd = Date.now();
@@ -391,6 +402,7 @@
     var bak = $('paginas');
     bak.innerHTML = '';
     staat.paginas.forEach(function (p, pi) { bak.appendChild(renderPagina(p, pi, nrs)); });
+    if (window.Tips) Tips.koppel();
   }
 
   function renderPagina(p, pi, nrs) {
@@ -409,7 +421,7 @@
     s.appendChild(kop);
 
     var body = el('div', 'pagina-body');
-    var kolom = el('div', 'shot-kolom');
+    var kolom = el('div', 'shot-kolom'); kolom.dataset.tip = 'screenshot';
     var shot = el('div', 'shot');
     var img = el('img'); img.src = p.bron; img.alt = 'Screenshot ' + (p.pagina || ''); img.draggable = false;
     shot.appendChild(img);
@@ -425,7 +437,7 @@
       : 'Sleep een kader over wat er anders moet. Klik op een nummer om naar de tekst te gaan.'));
     body.appendChild(kolom);
 
-    var kaarten = el('div', 'kaarten');
+    var kaarten = el('div', 'kaarten'); kaarten.dataset.tip = 'kaarten';
     if (!p.wijzigingen.length) kaarten.appendChild(el('p', 'leeg-kaarten', 'Nog geen wijzigingen. Sleep een kader op het screenshot.'));
     p.wijzigingen.forEach(function (w) { kaarten.appendChild(renderKaart(p, w, nrs[w.id])); });
     kaarten.appendChild(knop('+ Wijziging zonder kader', 'klein', null, function () {
@@ -1285,6 +1297,7 @@
       cloud.eersteSync = false;
     }
   }).then(startCloud);
+  if (window.Tips) Tips.init();
   $('btn-cloud').addEventListener('click', function () {
     if (cloud.status === 'uit' || cloud.status === 'login') koppel(); else if (cloud.aan) sync();
   });

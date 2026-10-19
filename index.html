@@ -12,15 +12,16 @@
   <div class="merk">Wijzigingsverzoek <span>website</span></div>
   <div class="acties">
     <span id="status" class="status"></span>
-    <button id="btn-cloud" type="button">OneDrive</button>
-    <button id="btn-ai" type="button">AI-instellingen</button>
-    <button id="btn-verzoeken" type="button">Mijn verzoeken</button>
-    <button id="btn-nieuw" type="button">Nieuw</button>
-    <button id="btn-open" type="button">Openen</button>
-    <button id="btn-bekijk" type="button">Bekijken</button>
-    <button id="btn-download" type="button" title="Download als HTML-bestand met kopieerknoppen (ook weer te openen met Openen)">Download HTML</button>
-    <button id="btn-pdf" type="button">Download PDF</button>
-    <button id="btn-deel" type="button" class="primair" title="Zet de PDF in je OneDrive en maak een link die de webbouwer zonder inloggen opent">Deel link</button>
+    <button id="btn-cloud" type="button" data-tip="btn-cloud">OneDrive</button>
+    <button id="btn-ai" type="button" data-tip="btn-ai">AI-instellingen</button>
+    <button id="btn-verzoeken" type="button" data-tip="btn-verzoeken">Mijn verzoeken</button>
+    <button id="btn-nieuw" type="button" data-tip="btn-nieuw">Nieuw</button>
+    <button id="btn-open" type="button" data-tip="btn-open">Openen</button>
+    <button id="btn-bekijk" type="button" data-tip="btn-bekijk">Bekijken</button>
+    <button id="btn-download" type="button" data-tip="btn-download">Download HTML</button>
+    <button id="btn-pdf" type="button" data-tip="btn-pdf">Download PDF</button>
+    <button id="btn-deel" type="button" class="primair" data-tip="btn-deel">Deel link</button>
+    <button type="button" class="klein" onclick="location.href='beheer.html'">Beheer</button>
   </div>
   <input id="bestand-open" type="file" accept=".html,.htm" hidden>
 </header>
@@ -31,8 +32,8 @@
     <button id="cloud-koppel" type="button" class="primair">Koppel OneDrive</button>
   </div>
 
-  <section class="kaartblok gegevens">
-    <div class="veld breed"><label for="m-titel">Titel</label><input id="m-titel" data-meta="titel"></div>
+  <section class="kaartblok gegevens" style="position: relative;">
+    <div class="veld breed"><label for="m-titel">Titel <i class="info-tip" data-tip="gegevens">i</i></label><input id="m-titel" data-meta="titel"></div>
     <div class="veld"><label for="m-website">Website</label><input id="m-website" data-meta="website" placeholder="https://www.energiebehoud.nl"></div>
     <div class="veld"><label for="m-datum">Datum</label><input id="m-datum" data-meta="datum"></div>
     <div class="veld"><label for="m-afzender">Van</label><input id="m-afzender" data-meta="afzender" placeholder="Naam, bedrijf (mailadres)"></div>
@@ -43,7 +44,7 @@
   <div id="paginas"></div>
 
   <form id="url-form" class="kaartblok url-form">
-    <label for="url-invoer">Screenshot maken van een pagina</label>
+    <label for="url-invoer">Screenshot maken van een pagina <i class="info-tip" data-tip="url-form">i</i></label>
     <div class="url-rij">
       <input id="url-invoer" type="text" inputmode="url" autocomplete="url" spellcheck="false" required placeholder="https://labellift.vercel.app/opname/woning-zoeken">
       <select id="url-apparaat" aria-label="Formaat">
@@ -58,7 +59,7 @@
 
   <label id="dropzone" class="dropzone" tabindex="0">
     <input id="bestand-shot" type="file" accept="image/*" multiple hidden>
-    <strong>Of plak zelf een screenshot (Ctrl+V)</strong>
+    <strong>Of plak zelf een screenshot (Ctrl+V) <i class="info-tip" data-tip="dropzone">i</i></strong>
     <span>of sleep een afbeelding hierheen, of klik om een bestand te kiezen</span>
   </label>
 
@@ -123,6 +124,7 @@
 </dialog>
 
 <div id="melding" class="melding" role="status" aria-live="polite"></div>
+<script src="tips.js"></script>
 <script src="onedrive.js"></script>
 <script src="app.js"></script>
 </body>

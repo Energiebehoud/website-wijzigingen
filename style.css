@@ -185,6 +185,34 @@ kbd { border: 1px solid var(--lijn); border-bottom-width: 2px; border-radius: 4p
 }
 .melding.zichtbaar { opacity: 1; transform: translateX(-50%) translateY(0); }
 
+.tooltip {
+  position: fixed; z-index: 100; max-width: 320px; padding: 10px 14px;
+  background: var(--tekst); color: #fff; border-radius: 8px; font-size: 13px; line-height: 1.5;
+  pointer-events: none; opacity: 0; transition: opacity .15s;
+  box-shadow: 0 4px 16px rgba(0,0,0,.2);
+}
+.tooltip.zichtbaar { opacity: 1; }
+
+.info-tip {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: var(--merk); color: #fff; font-size: 11px; font-weight: 700; font-style: normal;
+  cursor: help; vertical-align: middle; margin-left: 6px; flex: none;
+  transition: background .15s;
+}
+.info-tip:hover { background: var(--merk-donker); }
+
+.uitleg-beheer { color: var(--zacht); font-size: 14px; line-height: 1.5; margin: 0; }
+.tip-blok { margin-bottom: 12px; }
+.tip-kop { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+.tip-kop strong { font-size: 15px; }
+.tip-sleutel { font-size: 11px; color: var(--zacht); background: var(--vlak); padding: 2px 6px; border-radius: 4px; }
+.tip-badge { font-size: 11px; color: var(--merk-donker); background: var(--nieuw-vlak); padding: 2px 8px; border-radius: 10px; font-weight: 600; }
+.tip-standaard { font-size: 13px; color: var(--zacht); line-height: 1.4; margin-bottom: 6px; }
+.tip-veld { width: 100%; resize: vertical; }
+.tip-item-acties { margin-top: 6px; }
+.beheer-acties { display: flex; gap: 8px; flex-wrap: wrap; }
+
 @media (max-width: 900px) {
   .gegevens { grid-template-columns: 1fr 1fr; }
   .pagina-body { grid-template-columns: 1fr; }
